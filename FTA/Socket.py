@@ -92,8 +92,12 @@ class Socket:
         #append data into queue in chunks
         dataQueue = queue()
 
-        for i in range(0, len(data), 32):
-            if (len(data) < 32):
+        for i in range(0, len(data), 4):
+            if len(data) < 4:
                 dataQueue.append(data[i:i+len(data)])
             else:
-                dataQueue.append(data[i:])
+                dataQueue.append(data[i:i+4])
+
+        #
+        for data in dataQueue:
+            p = create_packet()
