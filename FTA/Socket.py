@@ -11,20 +11,19 @@ from timeout import timeout
 #create socket objects and bind to ports, send and receive data, and create connections.
 class Socket:
 
-    def __init__(self):
+    def __init__(self, HOST, portNum):
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.src_address = (HOST, portNum)
-        self.dest_address = (HOST, portNum)
-        self.seq_num = 0
-        self.ack_num = 0
+        self.server_address = (HOST, portNum)
+        #self.seq_num = 0
+        #self.ack_num = 0
         self.window = 0
 
 
-    #binds to socket given the host and port
-    def bind_socket(ipAddress, portNum):
+    #binds to server socket given the host and port
+    def bind_server_socket(HOST, portNum):
         try:
-            self.dest_address = (ipAddress, portNum)
+            self.server_address = (HOST, portNum)
             self.socket.bind(dest_address)
         except socket.error, msg:
             logging.error(' Bind failed. Error Code: ' + str(msg[0]) + ' Message: ' + msg[1])
@@ -34,7 +33,6 @@ class Socket:
     def create_packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
-    @timeout(5)
     #create and send SYN packet
     def send_SYN(self):
         #send SYN packet with no data and SYN flag on, sequence number = 0
@@ -42,19 +40,20 @@ class Socket:
 
         #implement time out on packet
         #send SYN
-        self.socket.sendto(syn_pkt, self.dest_address)
+        self.socket.sendto(syn_pkt, self.server_address)
 
         #wait to receive SYN ACK back
         try:
-            synack, server = self.socket.recvfrom(self.window)
-            #make a packet from this data
+            synack, server = self.socket.recvfrom(65535)
             #increment sequence number?
         except self.socket.timeout:
             logging.debug("Send SYN timeout")
 
-    @timeout(5)
+        return synack
+
     #create and send SYN ACK packet
     def send_SYNACK(self):
+        
         synack_pkt = create_packet(self.src_address[2], self.dest_address[2], self.seq_num, self.ack_num, [True, False, False, True, False], None)
 
         self.socket.sendto(synack_pkt, self.dest_address)
@@ -68,10 +67,10 @@ class Socket:
             #return none to client
             #resend limit
 
-    @timeout(5)
+
     #create and send final ACK packet
     def send_ACK(self):
-        ack_pkt = create_packet(self.src_address[2], self.dest_address[2], self.seq_num, self.ack_num, [True, False, False, False, False], None)
+        ack_pkt = create_packet(self.src_address[2], self.dest_address[2], self.seq_num, self.ack_num, [True, False, False, False, False], None, None)
 
         self.socket.sendto(ack_pkt, self.dest_address)
         try:
@@ -79,15 +78,21 @@ class Socket:
         except self.socket.timeout:
             logging.debug("Send ACK timeout")
 
-
-    def wait_for_connect(self):
-
+    #client connection
+    def initiate_connection():
         synack = self.send_SYN()
 
-        self.send_ACK()
+        if !synack:
+            self.send_ACK()
+
+
+    #server connection
+    def wait_for_connect(self):
+
+
 
     #send data
-    def send(self, data):
+    def send(self, data, sendWindowSize):
 
         #append data into queue in chunks
         dataQueue = queue()
@@ -98,6 +103,30 @@ class Socket:
             else:
                 dataQueue.append(data[i:i+4])
 
-        #
+        #create packets from those chunks of data, create header for each packet
+        packetQueue = queue()
+
         for data in dataQueue:
-            p = create_packet()
+            checksum = hashlib.md5(data).hexdigest()
+            p = create_packet(self.src_address[2], self.dest_address[2], self.seq_num, self.ack_num, [False, False, False, False, False], data, checksum)
+            self.seq_num+=1
+            packetQueue.append(p)
+
+        #keep track of packets sent, but not acknowledged
+        sentQueue = queue()
+
+        #send packets until sendWindowSize = 0
+        while sendWindowSize > 0:
+            packetToSend = packetQueue.dequeue()
+            self.sendto(packetToSend, self.dest_address)
+            print("sent packet to server")
+            sendWindowSize -= 1
+            sentQueue.append(packetToSend)
+
+        #wait for ack for packets in order to move window size
+        try:
+            print("waiting for ack")
+            d
+
+
+#change window size method
