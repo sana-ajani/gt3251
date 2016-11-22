@@ -1,5 +1,6 @@
-import Socket
+from Socket import Socket
 import sys
+import getopt
 
 
 HOST = 'localhost'
@@ -22,4 +23,7 @@ if (PORT == ''):
     print "All arguments aren't present. Please enter in this form: " + sys.argv[0] + " -X <port>"
     sys.exit()
 
-Socket()
+socket = Socket(HOST, PORT, True)
+socket.bind_server_socket()
+while True:
+    socket.receive_SYN()

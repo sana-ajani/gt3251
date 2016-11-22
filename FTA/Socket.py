@@ -22,23 +22,22 @@ class Socket:
         else:
             self.src_address = (0, 0)
             self.dest_address = (HOST, portNum)
-        self.seq_num = randrange(0, 10)
+        self.seq_num = random.randrange(0, 10)
         self.ack_num = 0
         self.window = 0
 
         self.handshake = False
 
     #binds to server socket given the host and port
-    def bind_server_socket(HOST, portNum):
+    def bind_server_socket(self):
         try:
-            self.server_address = (HOST, portNum)
-            self.socket.bind(dest_address)
+            self.socket.bind(self.src_address)
         except socket.error, msg:
             logging.error(' Bind failed. Error Code: ' + str(msg[0]) + ' Message: ' + msg[1])
             sys.exit()
 
 
-    def create_packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
+    def create_packet(self, src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
     #create and send SYN packet
@@ -83,7 +82,7 @@ class Socket:
 
     #create and send final ACK packet
     # increment seq & ack b4 sending
-    def send_ACK(next_seq, next_ack):
+    def send_ACK(self, next_seq, next_ack):
         ack_pkt = create_packet(self.src_address[1], self.dest_address[1], next_seq, next_ack, [True, False, False, False, False], None)
 
         self.socket.sendto(ack_pkt, self.server_address)
@@ -122,7 +121,7 @@ class Socket:
 
 
     #client connection
-    def initiate_connection():
+    def initiate_connection(self):
         synack = self.send_SYN()
 
         if not synack:
