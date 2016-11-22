@@ -8,6 +8,7 @@ import Packet
 import random
 from timeout import timeout
 #http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
+#lol
 
 #create socket objects and bind to ports, send and receive data, and create connections.
 class Socket:
