@@ -12,10 +12,15 @@ from timeout import timeout
 #create socket objects and bind to ports, send and receive data, and create connections.
 class Socket:
 
-    def __init__(self, HOST, portNum):
+    def __init__(self, HOST, portNum, isServer):
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_address = (HOST, portNum)
+        if (isServer):
+            self.src_address = (HOST, portNum)
+            self.dest_address = (0, 0)
+        else:
+            self.src_address = (0, 0)
+            self.dest_address = (HOST, portNum)
         self.seq_num = randrange(0, 10)
         self.ack_num = 0
         self.window = 0
@@ -36,17 +41,17 @@ class Socket:
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
     #create and send SYN packet
-    def send_SYN(self, src_portNum, dest_portNum):
+    def send_SYN(self):
         #send SYN packet with no data and SYN flag on, sequence number = 0
-        syn_pkt = create_packet(src_portNum, dest_portNum, self.seq_num, self.ack_num, [False, False, False, True, False], None)
+        syn_pkt = create_packet(self.src_address[1], self.dest_address[1], self.seq_num, self.ack_num, [False, False, False, True, False], None)
 
         #implement time out on packet
         #send SYN
-        self.socket.sendto(syn_pkt, self.server_address)
+        self.socket.sendto(syn_pkt, self.dest_address)
 
         #wait to receive SYN ACK back
         try:
-            synack, server = self.socket.recvfrom(65535)
+            synack, server_address = self.socket.recvfrom(65535)
             #increment sequence number?
         except self.socket.timeout:
             logging.debug("Send SYN timeout")
@@ -54,9 +59,12 @@ class Socket:
         return synack
 
     #create and send SYN ACK packet
-    def send_SYNACK(self, src_portNum, dest_portNum, next_ack, dest_address):
+    #send next_ack number that corresponds to seq #
+    # src_address = server
+    # dest_address = client
+    def send_SYNACK(self, dest_address, next_ack):
 
-        synack_pkt = create_packet(src_portNum, dest_portNum, self.seq_num, next_ack, [True, False, False, True, False], None)
+        synack_pkt = create_packet(self.src_address[1], dest_address[1], self.seq_num, next_ack, [True, False, False, True, False], None)
 
         #send SYNACK
         #dest_address is the client's address
@@ -64,7 +72,7 @@ class Socket:
 
         try:
             #while synack's timer is running
-            ack, server = self.socket.recvfrom(65535)
+            ack, client_address = self.socket.recvfrom(65535)
         except self.socket.timeout:
             #send_SYNACK
             logging.debug("Send SYN ACK timeout")
@@ -73,8 +81,9 @@ class Socket:
         return ack
 
     #create and send final ACK packet
-    def send_ACK(self, src_port, dest_port, next_seq, next_ack):
-        ack_pkt = create_packet(src_port, dest_port, next_seq, next_ack, [True, False, False, False, False], None)
+    # increment seq & ack b4 sending
+    def send_ACK(next_seq, next_ack):
+        ack_pkt = create_packet(self.src_address[1], self.dest_address[1], next_seq, next_ack, [True, False, False, False, False], None)
 
         self.socket.sendto(ack_pkt, self.server_address)
 
@@ -85,6 +94,21 @@ class Socket:
 
         self.handshake = True
         #return data
+
+
+    # for first SYN packet
+    #called by server
+    def receive_SYN(self):
+        syn_pkt, client_address = self.socket.recvfrom(65535)
+        self.dest_address = client_address
+        send_SYNACK(self.dest_address[1], syn_pkt.seq_num + 1)
+
+
+    def receive_SYNACK(self):
+        synack_pkt, server_address = self.socket.recvfrom(65535)
+        send_ACK(synack_pkt.ack_num, synack_pkt.seq_num + 1)
+
+
 
 
     def get_file(self, filename):
@@ -126,7 +150,7 @@ class Socket:
 
         for data in dataQueue:
             checksum = hashlib.md5(data).hexdigest()
-            p = create_packet(self.src_address[2], self.dest_address[2], self.seq_num, self.ack_num, [False, False, False, False, False], data, checksum)
+            p = create_packet(src_address[1], self.dest_address[1], self.seq_num, self.ack_num, [False, False, False, False, False], data, checksum)
             self.seq_num+=1
             packetQueue.append(p)
 
@@ -146,6 +170,5 @@ class Socket:
             #print("waiting for ack")
 
 #change window size method
-
 
 #recevive method
