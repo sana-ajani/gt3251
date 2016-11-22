@@ -1,3 +1,5 @@
+import pickle
+
 class Packet:
 	def __init__(self, src_port, dest_port, seq_num, ack_num, flags, data, checksum = None):
 		self.src_port = src_port & 0xff

@@ -4,14 +4,16 @@ import getopt
 import os
 import hashlib
 import logging
-import Packet
+from Packet import Packet
 import random
 from timeout import timeout
+import pickle
+
 #http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
 #lol
 
 #create socket objects and bind to ports, send and receive data, and create connections.
-class Socket:
+class mySocket:
 
     def __init__(self, HOST, portNum, isServer):
 
@@ -36,22 +38,22 @@ class Socket:
             logging.error(' Bind failed. Error Code: ' + str(msg[0]) + ' Message: ' + msg[1])
             sys.exit()
 
-
     def create_packet(self, src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
     #create and send SYN packet
     def send_SYN(self):
         #send SYN packet with no data and SYN flag on, sequence number = 0
-        syn_pkt = create_packet(self.src_address[1], self.dest_address[1], self.seq_num, self.ack_num, [False, False, False, True, False], None)
+        syn_pkt = self.create_packet(self.src_address[1], self.dest_address[1], self.seq_num, self.ack_num, [False, False, False, True, False], 0)
 
         #implement time out on packet
         #send SYN
-        self.socket.sendto(syn_pkt, self.dest_address)
+        self.socket.sendto(pickle.dumps(syn_pkt), self.dest_address)
 
         #wait to receive SYN ACK back
         try:
             synack, server_address = self.socket.recvfrom(65535)
+            synack = pickle.loads(synack)
             #increment sequence number?
         except self.socket.timeout:
             logging.debug("Send SYN timeout")
@@ -68,16 +70,16 @@ class Socket:
 
         #send SYNACK
         #dest_address is the client's address
-        self.socket.sendto(synack_pkt, dest_address)
+        self.socket.sendto(pickle.dumps(synack_pkt), dest_address)
 
         try:
             #while synack's timer is running
             ack, client_address = self.socket.recvfrom(65535)
+            ack = pickle.loads(ack)
         except self.socket.timeout:
             #send_SYNACK
             logging.debug("Send SYN ACK timeout")
             #resend limit
-
         return ack
 
     #create and send final ACK packet
@@ -85,10 +87,11 @@ class Socket:
     def send_ACK(self, next_seq, next_ack):
         ack_pkt = create_packet(self.src_address[1], self.dest_address[1], next_seq, next_ack, [True, False, False, False, False], None)
 
-        self.socket.sendto(ack_pkt, self.server_address)
+        self.socket.sendto(pickle.dumps(ack_pkt), self.server_address)
 
         try:
             data, server = self.socket.recvfrom(65535)
+            pickle.loads(data)
         except self.socket.timeout:
             logging.debug("Send ACK timeout")
 
@@ -100,15 +103,15 @@ class Socket:
     #called by server
     def receive_SYN(self):
         syn_pkt, client_address = self.socket.recvfrom(65535)
+        syn_pkt = pickle.loads(syn_pkt)
         self.dest_address = client_address
         send_SYNACK(self.dest_address[1], syn_pkt.seq_num + 1)
 
 
     def receive_SYNACK(self):
         synack_pkt, server_address = self.socket.recvfrom(65535)
+        synack_pkt = pickle.loads(syn_pkt)
         send_ACK(synack_pkt.ack_num, synack_pkt.seq_num + 1)
-
-
 
 
     def get_file(self, filename):

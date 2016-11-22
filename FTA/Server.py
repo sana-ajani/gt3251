@@ -1,4 +1,4 @@
-from Socket import Socket
+from mySocket import mySocket
 import sys
 import getopt
 
@@ -23,7 +23,7 @@ if (PORT == ''):
     print "All arguments aren't present. Please enter in this form: " + sys.argv[0] + " -X <port>"
     sys.exit()
 
-socket = Socket(HOST, PORT, True)
+socket = mySocket(HOST, PORT, True)
 socket.bind_server_socket()
 while True:
     socket.receive_SYN()

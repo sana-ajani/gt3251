@@ -1,8 +1,9 @@
 import getopt
 import sys
 import threading
-from Socket import Socket
+from mySocket import mySocket
 import Queue
+import logging
 
 server = 'localhost'
 port = 0
@@ -54,12 +55,12 @@ def console(q, lock):
 def connect(lock):
     with lock:
         print('In connect')
-        s = Socket(server, port, False)
+        s = mySocket(server, port, False)
         logging.info("Socket created")
 
-        synack = send_SYN()
+        synack = s.send_SYN()
         if (synack):
-            send_ACK(synack.ack_num, synack.seq_num + 1)
+            s.send_ACK(synack.ack_num, synack.seq_num + 1)
 
 def get(file, lock):
     with lock:
@@ -98,9 +99,6 @@ def main():
         if (len(command_info) > 1):
             action(para, stdout_lock)
         else:
-            try:
-                action(stdout_lock)
-            except TypeError:
-                print "Previous command requires an argument"
+            action(stdout_lock)
 
 main()
