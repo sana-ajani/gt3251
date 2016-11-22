@@ -1,7 +1,7 @@
 import getopt
 import sys
 import threading
-import Socket
+from Socket import Socket
 import Queue
 
 server = 'localhost'
@@ -41,7 +41,6 @@ for opt, arg in opts:
 
 
 
-
 def console(q, lock):
     while 1:
         raw_input()   # After pressing Enter you'll be in "input mode"
@@ -55,7 +54,12 @@ def console(q, lock):
 def connect(lock):
     with lock:
         print('In connect')
+        s = Socket(server, port, False)
+        logging.info("Socket created")
 
+        synack = send_SYN()
+        if (synack):
+            send_ACK(synack.ack_num, synack.seq_num + 1)
 
 def get(file, lock):
     with lock:
@@ -96,7 +100,7 @@ def main():
         else:
             try:
                 action(stdout_lock)
-            except TypeError: 
+            except TypeError:
                 print "Previous command requires an argument"
 
 main()
