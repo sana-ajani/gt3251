@@ -23,13 +23,13 @@ class mySocket:
             self.dest_address = (HOST, portNum)
         self.next_seq_num = 0
         self.ack_num = 0
-        self.send_window_size = 0
-        self.recv_window_size = 0
+        self.send_window_size = 1
+        self.recv_window_size = 1
         self.handshake = False
         self.send_base = 0
         self.packet_array = []
         self.recv_base = 0
-        self.buffer_array = [-1]*(2^32 - 1)
+        self.buffer_array = [-1]*self.recv_window_size
 
         print("Socket created")
 
@@ -43,7 +43,7 @@ class mySocket:
             sys.exit()
 
     def create_packet(self, src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
-        print("packet created")
+        #print("packet created")
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
     #create and send SYN packet
@@ -83,7 +83,6 @@ class mySocket:
             ack, client_address = self.socket.recvfrom(65535)
             ack = pickle.loads(ack)
             print "ack received by server"
-            self.listenforPacket()
         except socket.timeout:
             #send_SYNACK
             logging.debug("Send SYN ACK timeout")
@@ -113,9 +112,10 @@ class mySocket:
         f = open
 
     def post_file(self, fileobject):
-        b = bytearray(fileobject)
+        f = fileobject.read()
+        b = bytearray(f)
         self.send(b)
-        print("sent data in file to server")
+        print("Done. Sent all the data")
         fileobject.close()
 
     #client connection
@@ -134,53 +134,68 @@ class mySocket:
         dataChunk = None
 
         for i in range(0, len(data), 4):
-            if self.next_seq_num <= self.send_window_size + self.send_base:
+            print "next seq num", self.next_seq_num
+            print "send winodw size", self.send_window_size
+            print "send base", self.send_base
+            if self.next_seq_num < self.send_window_size + self.send_base:
                 if len(data) < 4:
                     self.sendPacket(data[i:len(data)])
+                    self.listenforAck()
                 else:
-                    print data[i:i+4]
                     self.sendPacket(data[i:i+4])
+                    if (i+4 >= len(data)):
+                        self.listenforAck()
                     self.next_seq_num+=1
-            else:
-                while (self.next_seq_num > self.send_window_size + self.send_base):
 
+            else:
+                while (self.next_seq_num >= self.send_window_size + self.send_base):
                     self.listenforAck()
 
                 if len(data) < 4:
+                    print "~~~~SENDING THE RLD!!"
                     self.sendPacket(data[i:len(data)])
+                    self.listenforAck()
                 else:
+                    #print "look for this:", data[i:i+4]
                     self.sendPacket(data[i:i+4])
+                    if (i+4 >= len(data)):
+                        self.listenforAck()
                     self.next_seq_num+=1
 
     def sendPacket(self, dataChunk):
         checksum = hashlib.md5(dataChunk).hexdigest()
         checksum = int(checksum, 32)
-        print checksum
+        #print checksum
         print "dataChunk: ", dataChunk
         p = self.create_packet(self.src_address[1], self.dest_address[1], self.next_seq_num, self.ack_num, [False, False, False, False, False], dataChunk, checksum)
         self.packet_array.append(p)
-        print "sendpacket packet array:", str(self.packet_array)
+        print "sendpacket packet array:", p.data
         self.socket.sendto(pickle.dumps(p), self.dest_address)
 
     def listenforAck(self):
+        print "listening for ack"
         ack, dest_address = self.socket.recvfrom(65535)
         ack = pickle.loads(ack)
+        print "got ack from server", ack.data
         if self.verifyChecksum(ack):
-            print "ack_num throwing error,", ack.ack_num - 1
+            print("Got an acknowledgement for data: ", ack.data)
+            #print "ack_num throwing error,", ack.ack_num - 1
             self.packet_array[ack.ack_num - 1] = ack
-            print "send-base: ", self.send_base
-            print "listening packet array:", str(self.packet_array)
-
-            while self.packet_array[self.send_base].ACK:
+            #print "send-base: ", self.send_base
+            #print "listening packet array:", str(self.packet_array)
+            #print "packet array at send-base", self.packet_array[self.send_base]
+            while self.send_base < len(self.packet_array) and self.packet_array[self.send_base].ACK:
                 self.send_base+=1
         #else:
             #wait for resend ack
 
     def verifyChecksum(self, packet):
-        print type(packet.data)
-        print packet.data
+        #print type(packet.data)
+        print "packet data: ", packet.data
         checksum = hashlib.md5(packet.data).hexdigest()
         checksum = int(checksum, 32)
+        print "calculated checksum: ", checksum
+        print "packet checksum: ", packet.checksum
         if checksum == packet.checksum:
             return True
         else:
@@ -197,18 +212,20 @@ class mySocket:
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
+            print "recvbase: ", self.recv_base
+            print "packet.seq_num: ", packet.seq_num
+            print "recv window size: ", self.recv_window_size
             if self.verifyChecksum(packet):
-                self.sendPacketAck(packet)
-                if packet.seq_num != self.recv_base:
-                    self.buffer_array[packet.seq_num] = packet
-                else:
-                    #write to file
-                    self.buffer_array[packet.seq_num] = packet
+                p = self.sendPacketAck(packet)
+                self.buffer_array[packet.seq_num] = p
+
+                #self.recv_base+=1
+                while (self.buffer_array[self.recv_base] != -1 and (self.buffer_array[self.recv_base]).ACK):
                     print "data: ", (self.buffer_array[self.recv_base]).data
                     self.recv_base+=1
-                    while (self.buffer_array[self.recv_base] != -1 and (self.buffer_array[self.recv_base]).ACK):
-                        print "data: ", (self.buffer_array[self.recv_base]).data
-                        self.recv_base+=1
+                    self.buffer_array.append(-1)
+
+
         elif ((self.recv_base - self.recv_window_size) <= packet.seq_num) and (packet.seq_num <= (self.recv_base - 1)):
             self.sendPacketAck(packet)
         #wrap around sequence numbers
@@ -216,9 +233,12 @@ class mySocket:
             self.recv_base = 0
 
     def sendPacketAck(self, packet):
-        if packet.seq_num == 2**32 - 1:
+        if packet.seq_num == 2**28 - 1:
             ack_to_send = 0
         ack_to_send = packet.seq_num + 1
-        print("ack num received", ack_to_send)
+        #print("ack num received", ack_to_send)
+        print "packet ack data: ", packet.data
         p = self.create_packet(self.src_address[1], self.dest_address[1], packet.seq_num, ack_to_send, [True, False, False, False, False], packet.data, packet.checksum)
         self.socket.sendto(pickle.dumps(p), self.dest_address)
+        print "omgggg sent"
+        return p

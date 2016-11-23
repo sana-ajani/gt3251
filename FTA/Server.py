@@ -25,5 +25,7 @@ if (PORT == ''):
 
 socket = mySocket(HOST, PORT, True)
 socket.bind_server_socket()
+socket.receive_SYN()
+
 while True:
-    socket.receive_SYN()
+    socket.listenforPacket()

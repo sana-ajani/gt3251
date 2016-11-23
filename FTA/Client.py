@@ -60,8 +60,7 @@ def get(file):
 def post(file):
     global s
     with open(file, "rb") as imageFile:
-        f = imageFile.read()
-        s.post_file(f)
+        s.post_file(imageFile)
 
 
 def window(size):
