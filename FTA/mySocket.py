@@ -31,6 +31,9 @@ class mySocket:
         self.recv_base = 0
         self.buffer_array = [-1]*self.recv_window_size
         self.recv_data = bytearray()
+        self.isDownload = False
+        self.filename = ''
+        
 
         print("Socket created")
 
@@ -110,11 +113,19 @@ class mySocket:
 
     # used by client
     def get_file(self, filename):
+        self.isDownload = True
+        self.filename = filename
+        b = bytearray(filename)
+        b.append(26)
+        self.send(b)
+        print "Download name sent to server!"
 
     # used by client
     def post_file(self, fileobject):
+        self.isDownload = False
         f = fileobject.read()
         b = bytearray(f)
+        b.append(26)
         self.send(b)
         print("Done. Sent all the data")
         fileobject.close()
@@ -126,9 +137,9 @@ class mySocket:
         if not synack:
             self.send_ACK()
 
-    #server connection
+    #server connection, used by server
     def wait_for_connect(self):
-        return
+        self.receive_SYN()
 
 
 
@@ -137,9 +148,9 @@ class mySocket:
         dataChunk = None
 
         for i in range(0, len(data), 4):
-            print "next seq num", self.next_seq_num
-            print "send winodw size", self.send_window_size
-            print "send base", self.send_base
+            # print "next seq num", self.next_seq_num
+            # print "send winodw size", self.send_window_size
+            # print "send base", self.send_base
             if self.next_seq_num < self.send_window_size + self.send_base:
                 if len(data) < 4:
                     self.sendPacket(data[i:len(data)])
@@ -155,7 +166,7 @@ class mySocket:
                     self.listenforAck()
 
                 if len(data) < 4:
-                    print "~~~~SENDING THE RLD!!"
+                    # print "~~~~SENDING THE RLD!!"
                     self.sendPacket(data[i:len(data)])
                     self.listenforAck()
                 else:
@@ -164,6 +175,8 @@ class mySocket:
                     if (i+4 >= len(data)):
                         self.listenforAck()
                     self.next_seq_num+=1
+
+
 
     def sendPacket(self, dataChunk):
         checksum = hashlib.md5(dataChunk).hexdigest()
@@ -212,9 +225,9 @@ class mySocket:
 
     #receiver
     def listenforPacket(self):
+
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
-
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
             # print "recvbase: ", self.recv_base
             # print "packet.seq_num: ", packet.seq_num
@@ -235,6 +248,9 @@ class mySocket:
         #wrap around sequence numbers
         else:
             self.recv_base = 0
+
+        if 26 in packet.data:
+            return "Done"
 
 
     def sendPacketAck(self, packet):

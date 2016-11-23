@@ -25,10 +25,52 @@ if (PORT == ''):
 
 socket = mySocket(HOST, PORT, True)
 socket.bind_server_socket()
-socket.receive_SYN()
+
+# 3 way handshake
+socket.wait_for_connect()
 
 while True:
-    socket.listenforPacket()
+    status = socket.listenforPacket()
+    if status == "Done":
+        if socket.isDownload:
+            #download the file
+            filename = socket.filename
+            try:
 
-    
+                f = open(filename, 'rb')
+                content_string = f.read()
+                f.close()
+                b = bytearray(content_string)
+                socket.send(b)
+                socket.recv_data = bytearray()
+
+            except IOError:
+
+                toSend = "File not found"
+
+                b = bytearray(toSend)
+                b.append(26)
+                socket.send(b)
+
+            print "Server sent the file back to the client:", filename
+
+
+
+        else:
+            #upload the file
+            filename = socket.filename
+            content = socket.recv_data
+            f = open(filename, 'wb')
+            f.write(content)
+            f.close()
+            socket.recv_data = bytearray()
+
+            done_upload = "Done upload"
+            b = bytearray(done_upload)
+            b.append(26)
+            socket.send(b)
+            print "Server received and uploaded file:", filename
+
+
+
 

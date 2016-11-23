@@ -56,12 +56,27 @@ def connect():
 def get(file):
     global s
     s.get_file(file)
+    while True:
+      status = s.listenforPacket()
+      if status == "Done":
+          if not (recv_data == "File not found\x1a"):
+            f = open(s.filename, 'wb')
+            f.write(s.recv_data)
+            f.close()
+
+
 
 
 def post(file):
     global s
-    with open(file, "rb") as imageFile:
-        s.post_file(imageFile)
+    imageFile = open(file, "rb")
+    s.post_file(imageFile, file)
+    status = s.listenforPacket()
+    if status == "Done":
+      print s.recv_data
+
+
+
 
 
 def window(size):
