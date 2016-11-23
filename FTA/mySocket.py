@@ -33,7 +33,7 @@ class mySocket:
         self.recv_data = bytearray()
         self.isDownload = False
         self.filename = ''
-        
+
 
         print("Socket created")
 
@@ -121,8 +121,9 @@ class mySocket:
         print "Download name sent to server!"
 
     # used by client
-    def post_file(self, fileobject):
+    def post_file(self, fileobject, filename):
         self.isDownload = False
+        self.filename = filename
         f = fileobject.read()
         b = bytearray(f)
         b.append(26)
@@ -228,6 +229,7 @@ class mySocket:
 
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
+
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
             # print "recvbase: ", self.recv_base
             # print "packet.seq_num: ", packet.seq_num
@@ -238,7 +240,7 @@ class mySocket:
 
                 #self.recv_base+=1
                 while (self.buffer_array[self.recv_base] != -1 and (self.buffer_array[self.recv_base]).ACK):
-                    recv_data += (self.buffer_array[self.recv_base]).data
+                    self.recv_data += (self.buffer_array[self.recv_base]).data
                     self.recv_base+=1
                     self.buffer_array.append(-1)
 

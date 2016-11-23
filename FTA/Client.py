@@ -64,9 +64,6 @@ def get(file):
             f.write(s.recv_data)
             f.close()
 
-
-
-
 def post(file):
     global s
     imageFile = open(file, "rb")
@@ -74,9 +71,6 @@ def post(file):
     status = s.listenforPacket()
     if status == "Done":
       print s.recv_data
-
-
-
 
 
 def window(size):

@@ -70,7 +70,3 @@ while True:
             b.append(26)
             socket.send(b)
             print "Server received and uploaded file:", filename
-
-
-
-
