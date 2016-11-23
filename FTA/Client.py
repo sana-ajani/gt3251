@@ -55,6 +55,7 @@ def connect():
 
 def get(file):
     global s
+    s.get_file(file)
 
 
 def post(file):
