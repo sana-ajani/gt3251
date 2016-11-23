@@ -40,56 +40,46 @@ for opt, arg in opts:
         print "Arguments are incorrect. Should be: " + sys.argv[0] + ' -A <address> -P <port>'
         sys.exit()
 
+s = None
+
+def connect():
+    global s
+    print('In connection')
+    print('check')
+    print("Server:", server)
+    print("Port:", port)
+    s = mySocket(server, port, False)
+    logging.info("Socket created")
+
+    synack = s.send_SYN()
+
+def get(file):
+    global s
 
 
-def console(q, lock):
-    while 1:
-        raw_input()   # After pressing Enter you'll be in "input mode"
-        with lock:
-            cmd = raw_input('Input command> ')
+def post(file):
+    global s
+    with open(file, "rb") as imageFile:
+        f = imageFile.read()
+        s.post_file(f)
 
-        q.put(cmd)
-        if cmd == 'quit':
-            break
 
-def connect(lock):
-    with lock:
-        print('In connect')
-        s = mySocket(server, port, False)
-        logging.info("Socket created")
+def window(size):
+    print("window")
 
-        synack = s.send_SYN()
-        if (synack):
-            s.send_ACK(synack.ack_num, synack.seq_num + 1)
-
-def get(file, lock):
-    with lock:
-        print('--> action bar')
-
-def post(file, lock):
-    with lock:
-        print("post")
-
-def window(size, lock):
-    with lock:
-        print("window")
-
-def invalid_input(lock):
-    with lock:
-        print('--> Unknown command, please enter connect, get, post or window')
+def invalid_input():
+    print('--> Unknown command, please enter connect, get, post or window')
 
 def main():
     cmd_actions = {'connect': connect, 'get': get, 'post': post, 'window': window}
-    cmd_queue = Queue.Queue()
-    stdout_lock = threading.Lock()
-
-    dj = threading.Thread(target=console, args=(cmd_queue, stdout_lock))
-    dj.start()
 
     while 1:
-        cmd = cmd_queue.get()
+        raw_input()   # After pressing Enter you'll be in "input mode"
+        cmd = raw_input('Input command> ')
+
         if cmd == 'quit':
             break
+
         command_info = cmd.split(' ')
         method = command_info[0]
         if (len(command_info) > 1):
@@ -97,8 +87,8 @@ def main():
 
         action = cmd_actions.get(method, invalid_input)
         if (len(command_info) > 1):
-            action(para, stdout_lock)
+            action(para)
         else:
-            action(stdout_lock)
+            action()
 
 main()

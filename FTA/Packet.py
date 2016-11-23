@@ -6,9 +6,10 @@ class Packet:
 		self.dest_port = dest_port & 0xff
 		self.seq_num = seq_num & 0xffff
 		self.ack_num = ack_num & 0xffff
-		self.data = data & 0xffff
+		self.data = data
 		self.ACK = flags[0]
 		self.PSH = flags[1]
 		self.RST = flags[2]
 		self.SYN = flags[3]
 		self.FIN = flags[4]
+		self.checksum = checksum
