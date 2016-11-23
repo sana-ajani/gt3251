@@ -34,10 +34,11 @@ while True:
     if status == "Done":
         if socket.isDownload:
             #download the file
+            socket.filename = socket.recv_data
             filename = socket.filename
             try:
 
-                f = open(filename, 'rb')
+                f = open(str(filename), 'rb')
                 content_string = f.read()
                 f.close()
                 b = bytearray(content_string)

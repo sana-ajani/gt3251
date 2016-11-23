@@ -111,18 +111,30 @@ class mySocket:
         self.dest_address = client_address
         self.send_SYNACK(self.dest_address, syn_pkt.seq_num + 1)
 
-    # used by client
+    # used by client, download
     def get_file(self, filename):
+
         self.isDownload = True
+        download_head = "dld\x1a"
+        download_byte = bytearray(download_head)
+        self.send(download_byte)
+
+        print "Download head has been sent!"
+
+
         self.filename = filename
         b = bytearray(filename)
         b.append(26)
         self.send(b)
         print "Download name sent to server!"
 
-    # used by client
+    # used by client, upload
     def post_file(self, fileobject, filename):
         self.isDownload = False
+        upload_head = "uld\x1a"
+        upload_byte = bytearray(upload_head)
+        self.send(upload_byte)
+
         self.filename = filename
         f = fileobject.read()
         b = bytearray(f)
@@ -229,6 +241,10 @@ class mySocket:
 
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
+        if (packet.data == "dld\x1a"):
+            self.isDownload = True
+        elif (packet.data == "uld\x1a"):
+            self.isDownload = False
 
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
             # print "recvbase: ", self.recv_base
