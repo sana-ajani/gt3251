@@ -93,7 +93,7 @@ class mySocket:
             #resend limit
 
     #create and send final ACK packet
-    # increment seq & ack b4 sending
+    #increment seq & ack b4 sending
     def send_ACK(self, next_seq, next_ack):
         ack_pkt = self.create_packet(self.src_address[1], self.dest_address[1], next_seq, next_ack, [True, False, False, False, False], 0)
 
@@ -102,7 +102,7 @@ class mySocket:
         self.handshake = True
         #return data
 
-    # for first SYN packet
+    #for first SYN packet
     #called by server
     def receive_SYN(self):
         syn_pkt, client_address = self.socket.recvfrom(65535)
@@ -249,6 +249,9 @@ class mySocket:
         elif (packet.data == "upld"):
             self.isDownload = False
 
+        if (packet.FIN):
+            return self.send_FINACK(packet)
+
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
             # print "recvbase: ", self.recv_base
             # print "packet.seq_num: ", packet.seq_num
@@ -284,3 +287,31 @@ class mySocket:
         self.socket.sendto(pickle.dumps(p), self.dest_address)
         print "omgggg sent"
         return p
+
+
+    def send_FIN(self):
+        empty_bytearray = bytearray()
+        #send FIN packet with no data and FIN flag on, seq number = ?
+        fin_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), self.ack_num, [False, False, False, False, True], empty_bytearray)
+        #send FIN
+        self.socket.sendto(pickle.dumps(fin_pkt), self.dest_address)
+        print "Initiated termination, sent FIN"
+        #wait to receive ACK on FIN back
+        finack_pkt, server_address = self.socket.recvfrom(65535)
+        print "Received Finack"
+        finack_pkt = pickle.loads(finack_pkt)
+        if (finack_pkt.ack_num == fin_pkt.ack_num + 1):
+            #wait for timeout, then close
+            self.socket.settimeout(5)
+            try:
+                self.listenforAck()
+            except socket.timeout:
+                self.socket.close()
+                print "Socket closed"
+
+
+    def send_FINACK(self, fin):
+        finack_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), fin.ack_num + 1, [False, False, False, False, True], fin.data)
+        self.socket.sendto(pickle.dumps(finack_pkt), self.dest_address)
+        print "Sent back Fin Ack"
+        return "Disconnect"
