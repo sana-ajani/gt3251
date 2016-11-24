@@ -11,12 +11,14 @@ found_arg = [1]*2
 window = 4
 
 try:
-   opts, args = getopt.getopt(sys.argv[1:],"A:P:",["address=","port="])
+   opts, args = getopt.getopt(sys.argv[1:],"A:P:d",["address=","port=", "debugging="])
 except getopt.GetoptError:
    print 'using default server [' + server + ']'
 
 for opt, arg in opts:
-    if opt in ("-A", "--address"):
+    if opt in ("-d", "--debugging"):
+       logging.basicConfig(level=logging.INFO)
+    elif opt in ("-A", "--address"):
        for char in arg:
            #check if ip address is all numbers and .
            if (char.isdigit() or char == "."):
@@ -37,20 +39,17 @@ for opt, arg in opts:
           logging.warning(" Port number must be a digit")
           sys.exit()
     else:
-        print "Arguments are incorrect. Should be: " + sys.argv[0] + ' -A <address> -P <port>'
+        logging.warning("Arguments are incorrect. Should be: " + sys.argv[0] + ' -A <address> -P <port>')
         sys.exit()
 
 s = None
 
 def connect():
     global s
-    print('In connection')
-    print('check')
-    print("Server:", server)
-    print("Port:", port)
+    logging.info(' Connecting...')
     s = mySocket(server, port, False)
-    logging.info("Socket created")
-
+    s.isConnected = True
+    logging.info(" Initiating 3 way handshake. Sending SYN")
     synack = s.send_SYN()
 
 #download
@@ -61,15 +60,15 @@ def get(file):
         status = s.listenforPacket()
         if status == "Done":
             if not (s.recv_data == "File not found\x1a"):
-                print "THIS IS FILENAME IN CLIENT", s.filename
+                logging.info("This is the filename in the client: {0}".format(s.filename))
                 f = open(s.filename, 'wb')
                 f.write(s.recv_data)
                 f.close()
-                print "FILE IS MADE!!!"
+                logging.info("Client has downloaded and created file")
                 s.reset()
                 return None
             else:
-                print "File not found:", s.filename
+                logging.warning("File not found: ", s.filename)
                 s.reset()
                 return None
 
@@ -80,12 +79,12 @@ def post(file):
         imageFile = open(file, "rb")
         s.post_file(imageFile, file)
     except IOError:
-        print "File to upload is not found:", file
+        logging.warning("File to upload is not found: ", file)
         return None
     while True:
       status = s.listenforPacket()
       if status == "Done":
-        print s.recv_data
+        logging.info(" Data received. {0}".format(s.recv_data))
         s.reset()
         return None
 
@@ -93,10 +92,10 @@ def post(file):
 def window(size):
 
     s.change_window(int(size))
-    print "Window changed"
+    logging.info(" Window changed")
 
 def invalid_input():
-    print('--> Unknown command, please enter connect, get <download filename>, post <upload filename> or window <desired window size>')
+    logging.warning('--> Unknown command, please enter connect, get <download filename>, post <upload filename> or window <desired window size>')
 
 def main():
     global s
@@ -107,9 +106,8 @@ def main():
         cmd = raw_input('Input command> ')
 
         if cmd == 'disconnect':
+            logging.info("Initiating disconnect. Sent FIN packet")
             s.send_FIN()
-
-            #gracefully disconnect
             break
 
         command_info = cmd.split(' ')
