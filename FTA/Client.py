@@ -6,48 +6,36 @@ import Queue
 import logging
 
 server = 'localhost'
-port = 0
+PORT = 0
 found_arg = [1]*2
 window = 4
+check = False
 
-try:
-   opts, args = getopt.getopt(sys.argv[1:],"A:P:d",["address=","port=", "debugging="])
-except getopt.GetoptError:
-   print 'using default server [' + server + ']'
-
-for opt, arg in opts:
-    if opt in ("-d", "--debugging"):
-       logging.basicConfig(level=logging.INFO)
-    elif opt in ("-A", "--address"):
-       for char in arg:
-           #check if ip address is all numbers and .
-           if (char.isdigit() or char == "."):
-                check = True
-           else:
-                check = False
-       if (check):
-         server = arg
-         found_arg[0] = 0 #this argument is present
-       else:
-         logging.warning(" Please input a correct IP address")
-         sys.exit()
-    elif opt in ("-P", "--port"):
-      if (arg.isdigit()):
-        port = int(arg)
-        found_arg[1] = 0
-      else:
-          logging.warning(" Port number must be a digit")
-          sys.exit()
-    else:
-        logging.warning("Arguments are incorrect. Should be: " + sys.argv[0] + ' -A <address> -P <port>')
-        sys.exit()
+if len(sys.argv) < 3:
+    print "Please enter the required parameters."
+    sys.exit()
+else:
+    for arg in sys.argv[1:]:
+        if ("." in arg):
+            check = True
+            server = arg
+        elif (arg.isdigit()):
+            PORT = int(arg)
+        elif PORT == '':
+            print "All arguments aren't present. Please enter in this form: " + sys.argv[0] + " <port>"
+            sys.exit()
+        elif not (check):
+            logging.warning(" Please input a correct IP address")
+            sys.exit()
+        if arg == "-d":
+            logging.basicConfig(level=logging.INFO)
 
 s = None
 
 def connect():
     global s
     logging.info(' Connecting...')
-    s = mySocket(server, port, False)
+    s = mySocket(server, PORT, False)
     s.isConnected = True
     logging.info(" Initiating 3 way handshake. Sending SYN")
     synack = s.send_SYN()
