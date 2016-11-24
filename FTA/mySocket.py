@@ -33,6 +33,7 @@ class mySocket:
         self.recv_data = bytearray()
         self.isDownload = False
         self.filename = ''
+        self.isConnected = False
 
 
         print("Socket created")
@@ -233,6 +234,11 @@ class mySocket:
         print "RECEIVED THIS ACK", ack.data
         print "ACK's BIT:", ack.ACK
         # print "got ack from server", ack.data
+
+        if (ack.FIN):
+            print "sending FINACK"
+            self.send_FINACK(ack)
+
         if self.verifyChecksum(ack):
             # print("Got an acknowledgement for data: ", ack.data)
             #print "ack_num throwing error,", ack.ack_num - 1
@@ -279,7 +285,8 @@ class mySocket:
             self.isDownload = False
 
         if (packet.FIN):
-            return self.send_FINACK(packet)
+            print "sending FINACK"
+            self.send_FINACK(packet)
 
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
             # print "recvbase: ", self.recv_base
@@ -331,10 +338,10 @@ class mySocket:
         finack_pkt = pickle.loads(finack_pkt)
         if (finack_pkt.ack_num == fin_pkt.ack_num + 1):
             #wait for timeout, then close
-            self.socket.settimeout(5)
+            self.socket.settimeout(10)
             try:
                 while True:
-                    self.listenforAck()
+                    self.listenforPacket()
             except socket.timeout:
                 self.socket.close()
                 print "Socket closed"
@@ -344,4 +351,3 @@ class mySocket:
         finack_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), fin.ack_num + 1, [False, False, False, False, True], fin.data)
         self.socket.sendto(pickle.dumps(finack_pkt), self.dest_address)
         print "Sent back Fin Ack"
-        return "Disconnect"

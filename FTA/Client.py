@@ -49,6 +49,7 @@ def connect():
     print("Server:", server)
     print("Port:", port)
     s = mySocket(server, port, False)
+    s.isConnected = True
     logging.info("Socket created")
 
     synack = s.send_SYN()
@@ -108,7 +109,6 @@ def main():
 
         if cmd == 'disconnect':
             s.send_FIN()
-
             #gracefully disconnect
             break
 
