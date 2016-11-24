@@ -37,6 +37,18 @@ class mySocket:
 
         print("Socket created")
 
+    #called after get and post on both server and client
+    def reset(self):
+        self.next_seq_num = 0
+        self.ack_num = 0
+        self.send_base = 0
+        self.packet_array = []
+        self.recv_base = 0
+        self.buffer_array = [-1]*self.recv_window_size
+        self.recv_data = bytearray()
+        self.filename = ''
+
+
     #binds to server socket given the host and port
     def bind_server_socket(self):
         try:
@@ -208,10 +220,14 @@ class mySocket:
         # print "listening for ack"
         ack, dest_address = self.socket.recvfrom(65535)
         ack = pickle.loads(ack)
+        print "RECEIVED THIS ACK", ack.data
         # print "got ack from server", ack.data
         if self.verifyChecksum(ack):
             # print("Got an acknowledgement for data: ", ack.data)
             #print "ack_num throwing error,", ack.ack_num - 1
+            print "THIS IS THE PACKET_ARRAY:", self.packet_array
+            print "THIS IS THE SIZE OF IT:", len(self.packet_array)
+            print "THIS IS THE ACK NUM:", ack.ack_num
             self.packet_array[ack.ack_num - 1] = ack
             #print "send-base: ", self.send_base
             #print "listening packet array:", str(self.packet_array)
@@ -304,7 +320,8 @@ class mySocket:
             #wait for timeout, then close
             self.socket.settimeout(5)
             try:
-                self.listenforAck()
+                while True:
+                    self.listenforAck()
             except socket.timeout:
                 self.socket.close()
                 print "Socket closed"
