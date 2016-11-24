@@ -151,6 +151,7 @@ class mySocket:
         b4 = b1 + b2 + b3
 
         b4.append(26)
+        self.reset()
         self.send(b4)
         print("Done. Sent all the data")
         fileobject.close()
@@ -181,12 +182,15 @@ class mySocket:
             if self.next_seq_num < self.send_window_size + self.send_base:
                 if len(data) - i < 4:
                     self.sendPacket(data[i:len(data)])
-                    self.listenforAck()
+                    while (self.send_base != len(self.packet_array)):
+                        self.listenforAck()
                 else:
                     self.sendPacket(data[i:i+4])
-                    if (i+4 >= len(data)):
-                        self.listenforAck()
                     self.next_seq_num+=1
+                    if (i+4 >= len(data)):
+                        while (self.send_base != len(self.packet_array)):
+                            self.listenforAck()
+
 
             else:
                 while (self.next_seq_num >= self.send_window_size + self.send_base):

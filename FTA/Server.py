@@ -95,6 +95,7 @@ def listen():
                 done_upload = "Done upload"
                 b = bytearray(done_upload)
                 b.append(26)
+                socket.reset()
                 socket.send(b)
                 print "Server received and uploaded file:", filename
                 socket.reset()
