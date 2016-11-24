@@ -84,16 +84,18 @@ def window(size):
     print "Window changed"
 
 def invalid_input():
-    print('--> Unknown command, please enter connect, get, post or window')
+    print('--> Unknown command, please enter connect, get <download filename>, post <upload filename> or window <desired window size>')
 
 def main():
     cmd_actions = {'connect': connect, 'get': get, 'post': post, 'window': window}
 
     while 1:
-        raw_input()   # After pressing Enter you'll be in "input mode"
+        raw_input("Press enter to enter new command")   # After pressing Enter you'll be in "input mode"
         cmd = raw_input('Input command> ')
 
-        if cmd == 'quit':
+        if cmd == 'disconnect':
+
+            #gracefully disconnect
             break
 
         command_info = cmd.split(' ')
