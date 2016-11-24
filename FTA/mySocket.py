@@ -46,8 +46,6 @@ class mySocket:
         self.recv_base = 0
         self.buffer_array = [-1]*self.recv_window_size
         self.recv_data = bytearray()
-        self.filename = ''
-
 
     #binds to server socket given the host and port
     def bind_server_socket(self):
@@ -133,6 +131,7 @@ class mySocket:
         b = bytearray(download_head + filename)
         b.append(26)
         self.send(b)
+        self.reset()
         print "Download name sent to server!"
 
     # used by client, upload
@@ -180,7 +179,7 @@ class mySocket:
             # print "send winodw size", self.send_window_size
             # print "send base", self.send_base
             if self.next_seq_num < self.send_window_size + self.send_base:
-                if len(data) < 4:
+                if len(data) - i < 4:
                     self.sendPacket(data[i:len(data)])
                     self.listenforAck()
                 else:
@@ -193,20 +192,25 @@ class mySocket:
                 while (self.next_seq_num >= self.send_window_size + self.send_base):
                     self.listenforAck()
 
-                if len(data) < 4:
+                if len(data) - i < 4:
                     # print "~~~~SENDING THE RLD!!"
                     self.sendPacket(data[i:len(data)])
-                    self.listenforAck()
+                    while (self.send_base != len(self.packet_array)):
+                        self.listenforAck()
                 else:
                     #print "look for this:", data[i:i+4]
                     self.sendPacket(data[i:i+4])
-                    if (i+4 >= len(data)):
-                        self.listenforAck()
                     self.next_seq_num+=1
+                    if (i+4 == len(data)):
+                        while (self.send_base != len(self.packet_array)):
+                            self.listenforAck()
+                    # while (self.next_seq_num >= self.send_window_size + self.send_base):
+                    #     self.listenforAck()
 
 
 
     def sendPacket(self, dataChunk):
+
         checksum = hashlib.md5(dataChunk).hexdigest()
         checksum = int(checksum, 32)
         #print checksum
@@ -218,9 +222,12 @@ class mySocket:
 
     def listenforAck(self):
         # print "listening for ack"
+
         ack, dest_address = self.socket.recvfrom(65535)
         ack = pickle.loads(ack)
+
         print "RECEIVED THIS ACK", ack.data
+        print "ACK's BIT:", ack.ACK
         # print "got ack from server", ack.data
         if self.verifyChecksum(ack):
             # print("Got an acknowledgement for data: ", ack.data)
@@ -229,10 +236,12 @@ class mySocket:
             print "THIS IS THE SIZE OF IT:", len(self.packet_array)
             print "THIS IS THE ACK NUM:", ack.ack_num
             self.packet_array[ack.ack_num - 1] = ack
+            print "THIS IS PACKET_ARRAY AFTER REPLACEMENT OF ACK:", self.packet_array
             #print "send-base: ", self.send_base
             #print "listening packet array:", str(self.packet_array)
             #print "packet array at send-base", self.packet_array[self.send_base]
             while self.send_base < len(self.packet_array) and self.packet_array[self.send_base].ACK:
+                incremented = True
                 self.send_base+=1
         #else:
             #wait for resend ack

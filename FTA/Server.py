@@ -53,7 +53,9 @@ def listen():
                     f.close()
                     b = bytearray(content_string)
                     b.append(26)
+                    socket.reset()
                     socket.send(b)
+
                     socket.recv_data = bytearray()
                     print "Server sent the file back to the client:", filename
 
