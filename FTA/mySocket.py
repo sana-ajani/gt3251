@@ -7,6 +7,10 @@ import logging
 from Packet import Packet
 import random
 import pickle
+import time
+# import signal
+
+import multiprocessing
 
 #create socket objects and bind to ports, send and receive data, and create connections.
 class mySocket:
@@ -33,7 +37,10 @@ class mySocket:
         self.recv_data = bytearray()
         self.isDownload = False
         self.filename = ''
-        self.isConnected = False
+        self.timestamps = [-1]*self.send_window_size
+
+        #index of packet in timestamps that timed out
+        self.timed_out_index = -1
 
 
         print("Socket created")
@@ -47,6 +54,7 @@ class mySocket:
         self.recv_base = 0
         self.buffer_array = [-1]*self.recv_window_size
         self.recv_data = bytearray()
+        self.timestamps = [-1]*self.send_window_size
 
     #binds to server socket given the host and port
     def bind_server_socket(self):
@@ -171,6 +179,31 @@ class mySocket:
     def change_window(self, window_size):
         self.send_window_size = window_size
         self.recv_window_size = window_size
+        # self.buffer_array = window_size
+
+        difference_buffer_window = window_size - len(self.buffer_array)
+        for i in range(difference_buffer_window):
+            self.buffer_array.append(-1)
+
+
+
+        difference_time_window = window_size - len(self.timestamps)
+        for i in range(difference_time_window):
+            self.timestamps.append(-1)
+
+
+    # checks the time of timed out packets
+    def check_time(self):
+        for i in range(len(self.timestamps)):
+            if time.time() - self.timestamps[i] > 2:
+                return i
+        return -1
+
+    def handler():
+        self.timed_out_index = self.check_time()
+        # raise Exception("End of time")
+
+
 
     #windowSize == number of packets
     def send(self, data):
@@ -185,33 +218,152 @@ class mySocket:
                     self.sendPacket(data[i:len(data)])
                     while (self.send_base != len(self.packet_array)):
                         self.listenforAck()
+                        
+                        # if __name__ == '__main__':
+                        #     # Start bar as a process
+                        #     p = multiprocessing.Process(target=self.listenforAck)
+                        #     p.start()
+
+                        #     # Wait for 10 seconds or until process finishes
+                        #     p.join(2)
+
+                        #     # If thread is still active
+                        #     if p.is_alive():
+                        #         print "running... let's kill it..."
+                        #         self.handler()
+                        #         if self.timed_out_index != -1:
+                        #             resend_seq_num = self.timed_out_index + self.send_base
+                        #             packet_resend_data = self.packet_array[resend_seq_num].data
+                        #             self.sendPacket(packet_resent_data)
+                        #             self.timed_out_index = -1
+                        #             self.timestamps[self.timed_out_index] = time.time()
+                        #         # Terminate
+                        #         p.terminate()
+                        #         p.join()
+
+
                 else:
                     self.sendPacket(data[i:i+4])
                     self.next_seq_num+=1
                     if (i+4 >= len(data)):
                         while (self.send_base != len(self.packet_array)):
                             self.listenforAck()
+                            
+                            # if __name__ == '__main__':
+                            #     # Start bar as a process
+                            #     p = multiprocessing.Process(target=self.listenforAck)
+                            #     p.start()
+
+                            #     # Wait for 10 seconds or until process finishes
+                            #     p.join(2)
+
+                            #     # If thread is still active
+                            #     if p.is_alive():
+                            #         print "running... let's kill it..."
+                            #         self.handler()
+                            #         if self.timed_out_index != -1:
+                            #             resend_seq_num = self.timed_out_index + self.send_base
+                            #             packet_resend_data = self.packet_array[resend_seq_num].data
+                            #             self.sendPacket(packet_resent_data)
+                            #             self.timed_out_index = -1
+                            #             self.timestamps[self.timed_out_index] = time.time()
+                            #         # Terminate
+                            #         p.terminate()
+                            #         p.join()
+
 
 
             else:
                 while (self.next_seq_num >= self.send_window_size + self.send_base):
-                    self.listenforAck()
+                    self.listenforAck()   
+
+                    # if __name__ == '__main__':
+
+                    #     # Start bar as a process
+                        # p = multiprocessing.Process(target=self.listenforAck)
+                        # p.start()
+
+                        # # Wait for 10 seconds or until process finishes
+                        # p.join(2)
+
+                        # # If thread is still active
+                        # if p.is_alive():
+                        #     print "running... let's kill it..."
+                        #     self.handler()
+                        #     if self.timed_out_index != -1:
+                        #         resend_seq_num = self.timed_out_index + self.send_base
+                        #         packet_resend_data = self.packet_array[resend_seq_num].data
+                        #         self.sendPacket(packet_resent_data)
+                        #         self.timed_out_index = -1
+                        #         self.timestamps[self.timed_out_index] = time.time()
+                        #     # Terminate
+                        #     p.terminate()
+                        #     p.join()
+
+
 
                 if len(data) - i < 4:
-                    # print "~~~~SENDING THE RLD!!"
                     self.sendPacket(data[i:len(data)])
                     while (self.send_base != len(self.packet_array)):
-                        self.listenforAck()
+
+                        #check timestamps after 2 secs if listenforAck doesn't finish
+
+                        self.listenforAck()    
+                        # if __name__ == '__main__':
+                        #     # Start bar as a process
+                        #     p = multiprocessing.Process(target=listenforAck)
+                        #     p.start()
+
+                        #     # Wait for 10 seconds or until process finishes
+                        #     p.join(2)
+
+                        #     # If thread is still active
+                        #     if p.is_alive():
+                        #         print "running... let's kill it..."
+                        #         self.handler()
+                        #         if self.timed_out_index != -1:
+                        #             resend_seq_num = self.timed_out_index + self.send_base
+                        #             packet_resend_data = self.packet_array[resend_seq_num].data
+                        #             self.sendPacket(packet_resent_data)
+                        #             self.timed_out_index = -1
+                        #             self.timestamps[self.timed_out_index] = time.time()
+                        #         # Terminate
+                        #         p.terminate()
+                        #         p.join()
+
+
+
+
                 else:
                     #print "look for this:", data[i:i+4]
                     self.sendPacket(data[i:i+4])
                     self.next_seq_num+=1
                     if (i+4 == len(data)):
                         while (self.send_base != len(self.packet_array)):
-                            self.listenforAck()
-                    # while (self.next_seq_num >= self.send_window_size + self.send_base):
-                    #     self.listenforAck()
 
+                            
+                            if __name__ == '__main__':
+                                # Start bar as a process
+                                p = multiprocessing.Process(target=listenforAck)
+                                p.start()
+
+                                # Wait for 10 seconds or until process finishes
+                                p.join(2)
+
+                                # If thread is still active
+                                if p.is_alive():
+                                    p.terminate()
+
+                                    print "running... let's kill it..."
+                                    self.handler()
+                                    if self.timed_out_index != -1:
+                                        resend_seq_num = self.timed_out_index + self.send_base
+                                        packet_resend_data = self.packet_array[resend_seq_num].data
+                                        self.sendPacket(packet_resent_data)
+                                        self.timed_out_index = -1
+                                        self.timestamps[self.timed_out_index] = time.time()
+                                    # Terminate
+                                    p.join()
 
 
     def sendPacket(self, dataChunk):
@@ -224,21 +376,20 @@ class mySocket:
         self.packet_array.append(p)
         # print "sendpacket packet array:", p.data
         self.socket.sendto(pickle.dumps(p), self.dest_address)
+        index_time = self.next_seq_num - self.send_base
+        print "This is the index for the time:", index_time
+        print "Time array size:", len(self.timestamps)
+        self.timestamps[index_time] = time.time()
 
     def listenforAck(self):
         # print "listening for ack"
-
         ack, dest_address = self.socket.recvfrom(65535)
+
         ack = pickle.loads(ack)
 
         print "RECEIVED THIS ACK", ack.data
         print "ACK's BIT:", ack.ACK
         # print "got ack from server", ack.data
-
-        if (ack.FIN):
-            print "sending FINACK"
-            self.send_FINACK(ack)
-
         if self.verifyChecksum(ack):
             # print("Got an acknowledgement for data: ", ack.data)
             #print "ack_num throwing error,", ack.ack_num - 1
@@ -268,25 +419,24 @@ class mySocket:
         else:
             return False
 
-    def set_client_window(self, window_size):
-        self.send_window_size = window_size
-
-    def set_server_window(self, window_size):
-        self.recv_window_size = window_size
-
     #receiver
     def listenforPacket(self):
 
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
+
+        # handling duplicates
+        if self.recv_base > packet.seq_num:
+            self.sendPacketAck(packet)
+            return None
+
         if (packet.data == "dnld"):
             self.isDownload = True
         elif (packet.data == "upld"):
             self.isDownload = False
 
         if (packet.FIN):
-            print "sending FINACK"
-            self.send_FINACK(packet)
+            return self.send_FINACK(packet)
 
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
             # print "recvbase: ", self.recv_base
@@ -338,10 +488,10 @@ class mySocket:
         finack_pkt = pickle.loads(finack_pkt)
         if (finack_pkt.ack_num == fin_pkt.ack_num + 1):
             #wait for timeout, then close
-            self.socket.settimeout(10)
+            self.socket.settimeout(5)
             try:
                 while True:
-                    self.listenforPacket()
+                    self.listenforAck()
             except socket.timeout:
                 self.socket.close()
                 print "Socket closed"
@@ -351,3 +501,4 @@ class mySocket:
         finack_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), fin.ack_num + 1, [False, False, False, False, True], fin.data)
         self.socket.sendto(pickle.dumps(finack_pkt), self.dest_address)
         print "Sent back Fin Ack"
+        return "Disconnect"

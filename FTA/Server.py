@@ -30,7 +30,6 @@ socket.bind_server_socket()
 # 3 way handshake
 def listen():
     socket.wait_for_connect()
-    socket.isConnected = True
     while True:
         status = socket.listenforPacket()
         if status == "Done":
@@ -119,10 +118,7 @@ def main():
         cmd = raw_input('Input command> ')
         if cmd == 'terminate':
             #gracefully terminate the connection
-            if (socket.isConnected):
-                socket.send_FIN()
-            else:
-                socket.socket.close()
+
             break
 
         command_info = cmd.split(' ')
