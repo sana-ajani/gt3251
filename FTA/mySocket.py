@@ -205,7 +205,6 @@ class mySocket:
         p = multiprocessing.Process(target=self.listenforAck, args=(self.send_base,queue))
         p.start()
 
-
         # Wait for 2 seconds or until process finishes and quits
         p.join(2)
 
@@ -286,8 +285,6 @@ class mySocket:
                     if (self.send_base != len(self.packet_array)):
                         self.listenforAckHelper()
 
-
-
                 else:
                     self.sendPacket(data[i:i+4], False)
                     self.next_seq_num+=1
@@ -295,14 +292,11 @@ class mySocket:
                         if self.send_base != len(self.packet_array):
                             self.listenforAckHelper()
 
-
             else:
                 if (self.next_seq_num >= self.send_window_size + self.send_base):
-    
+
                     # Start bar as a process
                     self.listenforAckHelper()
-
-
 
                 if len(data) - i < 4:
                     self.sendPacket(data[i:len(data)], False)
@@ -339,6 +333,15 @@ class mySocket:
             # print "This is the index for the time:", index_time
             # print "Time array size:", len(self.timestamps)
             self.timestamps[index_time] = time.time()
+
+    def listenforFin(self):
+        ack, dest_address = self.socket.recvfrom(65535)
+        ack = pickle.loads(ack)
+        logging.info(" Received this ACK: {0} with ACK flag: {1}".format(ack.data, ack.ACK))
+
+        if (ack.FIN):
+            logging.info("Sending FINACK")
+            self.send_FINACK(ack)
 
     def listenforAck(self, send_base, queue):
         ack, dest_address = self.socket.recvfrom(65535)
@@ -459,7 +462,7 @@ class mySocket:
             self.socket.settimeout(5)
             try:
                 while True:
-                    self.listenforAck()
+                    self.listenforFin()
             except socket.timeout:
                 self.socket.close()
                 logging.info("Socket closed")
