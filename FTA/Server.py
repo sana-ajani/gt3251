@@ -4,36 +4,29 @@ import getopt
 import threading
 import logging
 
-
 HOST = '172.17.0.2'
 PORT = ''
 
-try:
-   opts, args = getopt.getopt(sys.argv[1:],"X:d",["port=", "debugging="])
-except getopt.GetoptError:
-    print "Enter valid parameters."
+#arguments in the form python Server.py <port name> -d
+if len(sys.argv) < 2:
+    print "Please enter the required parameters."
     sys.exit()
-
-for opt, arg in opts:
-    if opt in ("-d", "--debugging"):
-       logging.basicConfig(level=logging.INFO)
-    elif opt in ("-X", "--port"):
+else:
+    for arg in sys.argv[1:]:
         if (arg.isdigit()):
             PORT = int(arg)
-    else:
-        print "Arguments are incorrect. Should be: " + sys.argv[0] + ' -X <port>'
-        sys.exit()
-
-if (PORT == ''):
-    print "All arguments aren't present. Please enter in this form: " + sys.argv[0] + " -X <port>"
-    sys.exit()
+        elif PORT == '':
+            print "All arguments aren't present. Please enter in this form: " + sys.argv[0] + " <port>"
+            sys.exit()
+        if arg == "-d":
+            logging.basicConfig(level=logging.INFO)
 
 socket = mySocket(HOST, PORT, True)
 socket.bind_server_socket()
 
 # 3 way handshake
 def listen():
-    logging.info("Socket waiting for a connection")
+    logging.info(" Socket waiting for a connection")
     socket.wait_for_connect()
     socket.isConnected = True
     while True:
@@ -43,14 +36,11 @@ def listen():
             if socket.isDownload:
                 #download the file
                 split = str(socket.recv_data).split('dnld')
-                print split
                 name_with_end = split[1]
                 split = name_with_end.split('\x1a')
                 socket.filename = split[0]
                 filename = socket.filename
-                logging.info("Received file name")
-                print "THIS IS THE FILENAME!!", filename
-                # print "LENGTH OF IT!", len(filename)
+                logging.info(" Received file from client")
 
                 try:
                     f = open(filename, 'rb')
@@ -61,10 +51,10 @@ def listen():
                     socket.reset()
                     socket.send(b)
                     socket.recv_data = bytearray()
-                    logging.info("Sent the requested file: {0} back to the client.".format(filename))
+                    logging.info(" Sent the requested file: {0} back to the client.".format(filename))
 
                 except IOError:
-                    logging.warning("Could not find requested file in directory")
+                    logging.warning(" Could not find requested file in directory")
                     toSend = "File not found"
                     b = bytearray(toSend)
                     b.append(26)
@@ -75,6 +65,7 @@ def listen():
             else:
                 #upload the file
                 split = str(socket.recv_data).split("upld")
+                #split filename with file content
                 filename_content_begin_end = split[1]
                 split = filename_content_begin_end.split(chr(2))
                 filename_content_end = split[1]
@@ -82,19 +73,14 @@ def listen():
                 content = split[1]
                 filename = split[0]
                 socket.filename = filename
-
-                #logging.info("Received file: ", filename, " of length ", len(filename))
-                # print "THIS IS THE FILENAME!!", filename
-                # print "LENGTH OF IT!", len(filename)
                 content = content.replace('\x1a', '')
-                #logging.info("This is the content of the file: ", content)
-                #print "THIS IS THE CONTENT:", content
+
                 try:
                     f = open(filename, 'wb')
                     f.write(content)
                     f.close()
                 except IOError:
-                    logging.warning("Could not upload file to server")
+                    logging.warning(" Could not upload file to server")
                 socket.recv_data = bytearray()
 
                 done_upload = "Done upload"
@@ -102,7 +88,7 @@ def listen():
                 b.append(26)
                 socket.reset()
                 socket.send(b)
-                logging.info("Received and uploaded file to server: {0}".format(filename))
+                logging.info(" Received and uploaded file to server: {0}".format(filename))
                 socket.reset()
 
 
@@ -119,17 +105,16 @@ def main():
     thread.daemon = True
     thread.start()
     while 1:
-        raw_input("Press enter to enter new command")
+        raw_input("Press enter to enter new command \n")
         cmd = raw_input('Input command> ')
         if cmd == 'terminate':
             #gracefully terminate the connection
             if (socket.isConnected):
-                logging.info("Sent FIN packet to complete termination")
+                logging.info(" Sent FIN packet to complete termination")
                 socket.send_FIN()
             else:
-                logging.info("Shutting down server")
+                logging.info(" Shutting down server")
                 socket.socket.close()
-
             break
 
         command_info = cmd.split(' ')

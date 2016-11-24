@@ -40,7 +40,6 @@ class mySocket:
         self.timestamps = [-1]*self.send_window_size
         self.isConnected = False
 
-
         #index of packet in timestamps that timed out
         self.timed_out_index = -1
         logging.info(" Socket created")
@@ -66,72 +65,59 @@ class mySocket:
             sys.exit()
 
     def create_packet(self, src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
-        #print("packet created")
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
-    #create and send SYN packet
+    #create and send SYN packet with no data and SYN flag on,
     def send_SYN(self):
-        #send SYN packet with no data and SYN flag on, sequence number = 0
         syn_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), self.ack_num, [False, False, False, True, False], 0)
-        #implement time out on packet
-        #send SYN
         self.socket.sendto(pickle.dumps(syn_pkt), self.dest_address)
-        #wait to receive SYN ACK back
+        #try to receive SYN ACK back
         try:
             synack_pkt, server_address = self.socket.recvfrom(65535)
             logging.info(" Received SYNACK")
             synack_pkt = pickle.loads(synack_pkt)
+            #ACK sent back increments sequence number
             self.send_ACK(synack_pkt.ack_num, synack_pkt.seq_num + 1)
-            #increment sequence number?
         except socket.timeout:
             logging.debug("Send SYN timeout")
 
         return synack_pkt
 
-    #create and send SYN ACK packet
-    #send next_ack number that corresponds to seq #
+    # create and send SYN ACK packet
+    # send next_ack number that corresponds to seq #
     # src_address = server
     # dest_address = client
     def send_SYNACK(self, dest_address, next_ack):
-        print dest_address
+        logging.info(" Sending to destination address at {0}".format(dest_address))
         synack_pkt = self.create_packet(self.src_address[1], dest_address[1], random.randrange(100, 200), next_ack, [True, False, False, True, False], 0)
-
-        #send SYNACK
-        #dest_address is the client's address
         self.socket.sendto(pickle.dumps(synack_pkt), dest_address)
         logging.info(" Sent SYNACK")
         try:
-            #while synack's timer is running
             ack, client_address = self.socket.recvfrom(65535)
             ack = pickle.loads(ack)
             logging.info(" Received ACK")
         except socket.timeout:
-            #send_SYNACK
             logging.debug("Send SYN ACK timeout")
-            #resend limit
 
     #create and send final ACK packet
-    #increment seq & ack b4 sending
+    #increment seq & ack before sending
     def send_ACK(self, next_seq, next_ack):
         ack_pkt = self.create_packet(self.src_address[1], self.dest_address[1], next_seq, next_ack, [True, False, False, False, False], 0)
-
         self.socket.sendto(pickle.dumps(ack_pkt), self.dest_address)
         logging.info(" Sent ACK")
         self.handshake = True
-        #return data
 
-    #for first SYN packet
+    #for first SYN packet in handshake
     #called by server
     def receive_SYN(self):
         syn_pkt, client_address = self.socket.recvfrom(65535)
-        logging.info(" \n Received SYN")
+        logging.info(" Received SYN")
         syn_pkt = pickle.loads(syn_pkt)
         self.dest_address = client_address
         self.send_SYNACK(self.dest_address, syn_pkt.seq_num + 1)
 
     # used by client, download
     def get_file(self, filename):
-
         self.isDownload = True
         download_head = "dnld"
 
@@ -140,7 +126,7 @@ class mySocket:
         b.append(26)
         self.send(b)
         self.reset()
-        print "Download name sent to server!"
+        logging.info(" FILE NAME TO DOWNLOAD SENT TO SERVER!")
 
     # used by client, upload
     def post_file(self, fileobject, filename):
@@ -188,7 +174,6 @@ class mySocket:
         for i in range(difference_time_window):
             self.timestamps.append(-1)
 
-
     # checks the time of timed out packets
     def check_time(self):
         for i in range(len(self.timestamps)):
@@ -201,17 +186,13 @@ class mySocket:
 
     def listenforAckHelperNonTerminate(self):
         queue = multiprocessing.Queue()
-
         p = multiprocessing.Process(target=self.listenforAck, args=(self.send_base,queue))
         p.start()
 
         # Wait for 2 seconds or until process finishes and quits
         p.join(2)
-
         self.send_base = queue.get()
-
         print "changed send_base", self.send_base
-
         if (self.next_seq_num >= self.send_window_size + self.send_base):
             self.listenforAckHelper()
 
@@ -237,21 +218,12 @@ class mySocket:
         p = multiprocessing.Process(target=self.listenforAck, args=(self.send_base,queue))
         p.start()
 
-
         # Wait for 2 seconds or until process finishes and quits
         p.join(2)
-
         self.send_base = queue.get()
 
-        # print "changed send_base", self.send_base
-
-
         if (self.send_base != len(self.packet_array)):
-            # print "send_base before calling listenforAckHelper again:", self.send_base
             self.listenforAckHelper()
-
-        # if (self.next_seq_num >= self.send_window_size + self.send_base):
-        #     self.listenforAckHelper()
 
         # If thread is still active
         if p.is_alive():
@@ -304,9 +276,6 @@ class mySocket:
 
                         #check timestamps after 2 secs if listenforAck doesn't finish
                         self.listenforAckHelper()
-
-
-
                 else:
                     #print "look for this:", data[i:i+4]
                     self.sendPacket(data[i:i+4], False)
@@ -315,7 +284,6 @@ class mySocket:
                         if self.send_base != len(self.packet_array):
 
                             self.listenforAckHelper()
-
 
     def sendPacket(self, dataChunk, isDup):
 
@@ -337,65 +305,40 @@ class mySocket:
     def listenforFin(self):
         ack, dest_address = self.socket.recvfrom(65535)
         ack = pickle.loads(ack)
-        logging.info(" Received this ACK: {0} with ACK flag: {1}".format(ack.data, ack.ACK))
+        logging.info(" Received ACK for packet with data: {0}".format(ack.data))
 
-        if (ack.FIN):
-            logging.info("Sending FINACK")
+        if (ack.FIN == 1):
+            logging.info(" Sending FINACK")
             self.send_FINACK(ack)
 
     def listenforAck(self, send_base, queue):
         ack, dest_address = self.socket.recvfrom(65535)
         ack = pickle.loads(ack)
-        logging.info(" Received this ACK: {0} with ACK flag: {1}".format(ack.data, ack.ACK))
-
-        if (ack.FIN):
-            logging.info("Sending FINACK")
-            self.send_FINACK(ack)
+        logging.info(" Received ACK for packet with data: {0}".format(ack.data))
 
         if self.verifyChecksum(ack):
-            # print "THIS IS THE PACKET_ARRAY:", self.packet_array
-            # print "THIS IS THE SIZE OF IT:", len(self.packet_array)
-            # print "THIS IS THE ACK NUM:", ack.ack_num
             self.packet_array[ack.ack_num - 1] = ack
-            #print "THIS IS PACKET_ARRAY AFTER REPLACEMENT OF ACK:", self.packet_array
-            logging.info(" Received correct ACK")
-            #print "send-base: ", self.send_base
-            #print "listening packet array:", str(self.packet_array)
-            #print "packet array at send-base", self.packet_array[self.send_base]
-            # print send_base < len(self.packet_array)
-            # print self.packet_array[self.send_base].ACK
-            # print self.packet_array
-            # print "seq_num of ACK:", ack.seq_num
-            # print "send_base to compare:", send_base
-
             while send_base < len(self.packet_array) and self.packet_array[send_base].ACK:
-                # print "send_base changing:", send_base
                 send_base+=1
-                # print "send_base changed:", send_base
             queue.put(send_base)
 
-
-
+    # checksum is 32 bits of an MD5 hash
+    # verifies if checksum in header is same as checksum calculated on data
     def verifyChecksum(self, packet):
-        #print type(packet.data)
-        # print "packet data: ", packet.data
         checksum = hashlib.md5(packet.data).hexdigest()
         checksum = int(checksum, 32)
-        # print "calculated checksum: ", checksum
-        # print "packet checksum: ", packet.checksum
         if checksum == packet.checksum:
+            logging.info(" Checksum is verified")
             return True
         else:
             return False
 
-    #receiver
+    # receiver will be listening for packets, detect if upload or download
+    # receiver will check if packet is within receiving window size, check the checksum, and add to bufferarray
     def listenforPacket(self):
 
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
-
-        # print "Received this packet:", packet.data
-
         # handling duplicates
         if self.recv_base > packet.seq_num:
             self.sendPacketAck(packet)
@@ -410,9 +353,6 @@ class mySocket:
             self.send_FINACK(packet)
 
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
-            # print "recvbase: ", self.recv_base
-            # print "packet.seq_num: ", packet.seq_num
-            # print "recv window size: ", self.recv_window_size
             if self.verifyChecksum(packet):
                 p = self.sendPacketAck(packet)
                 self.buffer_array[packet.seq_num] = p
@@ -426,38 +366,35 @@ class mySocket:
 
         elif ((self.recv_base - self.recv_window_size) <= packet.seq_num) and (packet.seq_num <= (self.recv_base - 1)):
             self.sendPacketAck(packet)
+
         #wrap around sequence numbers
         else:
             self.recv_base = 0
-
+        #26 = end of file
         if 26 in packet.data:
             return "Done"
 
-
+    #sends an acknowledgement on the @param packet with ACK flag and ACK num incremented
     def sendPacketAck(self, packet):
         if packet.seq_num == 2**28 - 1:
             ack_to_send = 0
         ack_to_send = packet.seq_num + 1
-        #print("ack num received", ack_to_send)
-        #print "packet ack data: ", packet.data
         p = self.create_packet(self.src_address[1], self.dest_address[1], packet.seq_num, ack_to_send, [True, False, False, False, False], packet.data, packet.checksum)
         self.socket.sendto(pickle.dumps(p), self.dest_address)
-        logging.info(" Sent an ACK for the packet")
+        logging.info(" Sent an ACK for the packet with data {0}".format(p.data))
         return p
 
-
+    #send FIN packet with no data and FIN flag
     def send_FIN(self):
         empty_bytearray = bytearray()
-        #send FIN packet with no data and FIN flag on, seq number = ?
         fin_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), self.ack_num, [False, False, False, False, True], empty_bytearray)
-        #send FIN
         self.socket.sendto(pickle.dumps(fin_pkt), self.dest_address)
-        #print "Initiated termination, sent FIN"
-        #wait to receive ACK on FIN back
+
+        #wait to receive FINACK
         finack_pkt, server_address = self.socket.recvfrom(65535)
-        #print "Received Finack"
         finack_pkt = pickle.loads(finack_pkt)
         if (finack_pkt.ack_num == fin_pkt.ack_num + 1):
+
             #wait for timeout, then close
             self.socket.settimeout(5)
             try:
@@ -465,10 +402,10 @@ class mySocket:
                     self.listenforFin()
             except socket.timeout:
                 self.socket.close()
-                logging.info("Socket closed")
+                logging.info(" Socket closed")
 
-
+    #send FINACK with ACK number = FIN + 1
     def send_FINACK(self, fin):
         finack_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), fin.ack_num + 1, [False, False, False, False, True], fin.data)
         self.socket.sendto(pickle.dumps(finack_pkt), self.dest_address)
-        logging.info("Sent FINACK")
+        logging.info(" Sent FINACK")
