@@ -59,22 +59,29 @@ def get(file):
     while True:
       status = s.listenforPacket()
       if status == "Done":
-          if not (recv_data == "File not found\x1a"):
+          if not (s.recv_data == "File not found\x1a"):
+            print "THIS IS FILENAME IN CLIENT", s.filename
             f = open(s.filename, 'wb')
             f.write(s.recv_data)
             f.close()
+            print "FILE IS MADE!!!"
+            return None
 
 def post(file):
     global s
     imageFile = open(file, "rb")
     s.post_file(imageFile, file)
-    status = s.listenforPacket()
-    if status == "Done":
-      print s.recv_data
+    while True:
+      status = s.listenforPacket()
+      if status == "Done":
+        print s.recv_data
+        return None
 
 
 def window(size):
-    print("window")
+
+    s.change_window(int(size))
+    print "Window changed"
 
 def invalid_input():
     print('--> Unknown command, please enter connect, get, post or window')

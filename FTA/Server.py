@@ -32,20 +32,32 @@ socket.wait_for_connect()
 while True:
     status = socket.listenforPacket()
     if status == "Done":
+        print "Done"
         if socket.isDownload:
             #download the file
-            socket.filename = socket.recv_data
+            split = str(socket.recv_data).split('dnld')
+            print split
+            name_with_end = split[1]
+            split = name_with_end.split('\x1a')
+            socket.filename = split[0]
+
             filename = socket.filename
+            print "THIS IS THE FILENAME!!", filename
+            print "LENGTH OF IT!", len(filename)
+
             try:
 
-                f = open(str(filename), 'rb')
+                f = open(filename, 'rb')
                 content_string = f.read()
                 f.close()
                 b = bytearray(content_string)
+                b.append(26)
                 socket.send(b)
                 socket.recv_data = bytearray()
+                print "Server sent the file back to the client:", filename
 
             except IOError:
+                print 
 
                 toSend = "File not found"
 
@@ -53,17 +65,33 @@ while True:
                 b.append(26)
                 socket.send(b)
 
-            print "Server sent the file back to the client:", filename
-
-
-
         else:
             #upload the file
-            filename = socket.filename
-            content = socket.recv_data
-            f = open(filename, 'wb')
-            f.write(content)
-            f.close()
+            split = str(socket.recv_data).split("upld")
+
+            filename_content_begin_end = split[1]
+
+            split = filename_content_begin_end.split(chr(2))
+
+            filename_content_end = split[1]
+
+            split = filename_content_end.split(chr(3))
+
+            content = split[1]
+
+            filename = split[0]
+
+
+
+            socket.filename = filename
+            print "THIS IS THE FILENAME!!", filename
+            print "LENGTH OF IT!", len(filename)
+            try:
+                f = open(filename, 'wb')
+                f.write(content)
+                f.close()
+            except:
+                print "ERRORRR"
             socket.recv_data = bytearray()
 
             done_upload = "Done upload"

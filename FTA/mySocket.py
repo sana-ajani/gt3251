@@ -115,15 +115,10 @@ class mySocket:
     def get_file(self, filename):
 
         self.isDownload = True
-        download_head = "dld\x1a"
-        download_byte = bytearray(download_head)
-        self.send(download_byte)
-
-        print "Download head has been sent!"
-
+        download_head = "dnld"
 
         self.filename = filename
-        b = bytearray(filename)
+        b = bytearray(download_head + filename)
         b.append(26)
         self.send(b)
         print "Download name sent to server!"
@@ -131,15 +126,21 @@ class mySocket:
     # used by client, upload
     def post_file(self, fileobject, filename):
         self.isDownload = False
-        upload_head = "uld\x1a"
-        upload_byte = bytearray(upload_head)
-        self.send(upload_byte)
+        upload_head = "upld"
 
         self.filename = filename
         f = fileobject.read()
-        b = bytearray(f)
-        b.append(26)
-        self.send(b)
+        b1 = bytearray(upload_head)
+        b2 = bytearray(filename)
+
+        b2.insert(0, 2)
+        b2.append(3)
+
+        b3 = bytearray(f)
+        b4 = b1 + b2 + b3
+
+        b4.append(26)
+        self.send(b4)
         print("Done. Sent all the data")
         fileobject.close()
 
@@ -154,7 +155,9 @@ class mySocket:
     def wait_for_connect(self):
         self.receive_SYN()
 
-
+    def change_window(self, window_size):
+        self.send_window_size = window_size
+        self.recv_window_size = window_size
 
     #windowSize == number of packets
     def send(self, data):
@@ -241,9 +244,9 @@ class mySocket:
 
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
-        if (packet.data == "dld\x1a"):
+        if (packet.data == "dnld"):
             self.isDownload = True
-        elif (packet.data == "uld\x1a"):
+        elif (packet.data == "upld"):
             self.isDownload = False
 
         if (self.recv_base <= packet.seq_num and packet.seq_num <= self.recv_window_size + self.recv_base):
