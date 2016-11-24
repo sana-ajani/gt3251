@@ -1,13 +1,24 @@
-b = bytearray("hell")
-b.append(10)
-for i in range(0, len(b), 5):
-	print [b[i], b[i+1], b[i+2], b[i+3], b[i+4]]
-if 10 in b:
-	print True
+import multiprocessing
+import time
 
-a = bytearray("he")
-a += bytearray("ll")
+# bar
+def bar():
+    print "Tick"
 
-for i in range(len(a)):
-	print a[i]
+if __name__ == '__main__':
+    # Start bar as a process
+    p = multiprocessing.Process(target=bar)
+    p.start()
 
+    # Wait for 10 seconds or until process finishes
+    p.join(10)
+
+    print "Hiii"
+
+    # If thread is still active
+    if p.is_alive():
+        print "running... let's kill it..."
+
+        # Terminate
+        p.terminate()
+        p.join()

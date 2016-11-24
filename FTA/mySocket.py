@@ -196,10 +196,80 @@ class mySocket:
                 return i
         return -1
 
-    def handler():
+    def handler(self):
         self.timed_out_index = self.check_time()
-        # raise Exception("End of time")
 
+    def listenforAckHelperNonTerminate(self):
+        queue = multiprocessing.Queue()
+
+        p = multiprocessing.Process(target=self.listenforAck, args=(self.send_base,queue))
+        p.start()
+
+
+        # Wait for 2 seconds or until process finishes and quits
+        p.join(2)
+
+        self.send_base = queue.get()
+
+        print "changed send_base", self.send_base
+
+        if (self.next_seq_num >= self.send_window_size + self.send_base):
+            self.listenforAckHelper()
+
+        if p.is_alive():
+            print "running... let's kill it..."
+            self.handler()
+            if self.timed_out_index != -1:
+                resend_seq_num = self.timed_out_index + self.send_base
+                packet_resend_data = self.packet_array[resend_seq_num].data
+                self.sendPacket(packet_resend_data, True)
+                self.timed_out_index = -1
+                self.timestamps[self.timed_out_index] = time.time()
+            # Terminate
+            p.terminate()
+            p.join()
+            self.listenforAckHelper()
+
+        return None
+
+    def listenforAckHelper(self):
+        queue = multiprocessing.Queue()
+
+        p = multiprocessing.Process(target=self.listenforAck, args=(self.send_base,queue))
+        p.start()
+
+
+        # Wait for 2 seconds or until process finishes and quits
+        p.join(2)
+
+        self.send_base = queue.get()
+
+        # print "changed send_base", self.send_base
+
+
+        if (self.send_base != len(self.packet_array)):
+            # print "send_base before calling listenforAckHelper again:", self.send_base
+            self.listenforAckHelper()
+
+        # if (self.next_seq_num >= self.send_window_size + self.send_base):
+        #     self.listenforAckHelper()
+
+        # If thread is still active
+        if p.is_alive():
+            print "running... let's kill it..."
+            self.handler()
+            if self.timed_out_index != -1:
+                resend_seq_num = self.timed_out_index + self.send_base
+                packet_resend_data = self.packet_array[resend_seq_num].data
+                self.sendPacket(packet_resend_data, True)
+                self.timed_out_index = -1
+                self.timestamps[self.timed_out_index] = time.time()
+            # Terminate
+            p.terminate()
+            p.join()
+            self.listenforAckHelper()
+
+        return None
 
 
     #windowSize == number of packets
@@ -212,158 +282,48 @@ class mySocket:
             # print "send base", self.send_base
             if self.next_seq_num < self.send_window_size + self.send_base:
                 if len(data) - i < 4:
-                    self.sendPacket(data[i:len(data)])
-                    while (self.send_base != len(self.packet_array)):
-                        self.listenforAck()
+                    self.sendPacket(data[i:len(data)], False)
+                    if (self.send_base != len(self.packet_array)):
+                        self.listenforAckHelper()
 
-                        # if __name__ == '__main__':
-                        #     # Start bar as a process
-                        #     p = multiprocessing.Process(target=self.listenforAck)
-                        #     p.start()
-
-                        #     # Wait for 10 seconds or until process finishes
-                        #     p.join(2)
-
-                        #     # If thread is still active
-                        #     if p.is_alive():
-                        #         print "running... let's kill it..."
-                        #         self.handler()
-                        #         if self.timed_out_index != -1:
-                        #             resend_seq_num = self.timed_out_index + self.send_base
-                        #             packet_resend_data = self.packet_array[resend_seq_num].data
-                        #             self.sendPacket(packet_resent_data)
-                        #             self.timed_out_index = -1
-                        #             self.timestamps[self.timed_out_index] = time.time()
-                        #         # Terminate
-                        #         p.terminate()
-                        #         p.join()
 
 
                 else:
-                    self.sendPacket(data[i:i+4])
+                    self.sendPacket(data[i:i+4], False)
                     self.next_seq_num+=1
-                    if (i+4 >= len(data)):
-                        while (self.send_base != len(self.packet_array)):
-                            self.listenforAck()
-
-                            # if __name__ == '__main__':
-                            #     # Start bar as a process
-                            #     p = multiprocessing.Process(target=self.listenforAck)
-                            #     p.start()
-
-                            #     # Wait for 10 seconds or until process finishes
-                            #     p.join(2)
-
-                            #     # If thread is still active
-                            #     if p.is_alive():
-                            #         print "running... let's kill it..."
-                            #         self.handler()
-                            #         if self.timed_out_index != -1:
-                            #             resend_seq_num = self.timed_out_index + self.send_base
-                            #             packet_resend_data = self.packet_array[resend_seq_num].data
-                            #             self.sendPacket(packet_resent_data)
-                            #             self.timed_out_index = -1
-                            #             self.timestamps[self.timed_out_index] = time.time()
-                            #         # Terminate
-                            #         p.terminate()
-                            #         p.join()
-
+                    if (i+4 == len(data)):
+                        if self.send_base != len(self.packet_array):
+                            self.listenforAckHelper()
 
 
             else:
-                while (self.next_seq_num >= self.send_window_size + self.send_base):
-                    self.listenforAck()
-
-                    # if __name__ == '__main__':
-
-                    #     # Start bar as a process
-                        # p = multiprocessing.Process(target=self.listenforAck)
-                        # p.start()
-
-                        # # Wait for 10 seconds or until process finishes
-                        # p.join(2)
-
-                        # # If thread is still active
-                        # if p.is_alive():
-                        #     print "running... let's kill it..."
-                        #     self.handler()
-                        #     if self.timed_out_index != -1:
-                        #         resend_seq_num = self.timed_out_index + self.send_base
-                        #         packet_resend_data = self.packet_array[resend_seq_num].data
-                        #         self.sendPacket(packet_resent_data)
-                        #         self.timed_out_index = -1
-                        #         self.timestamps[self.timed_out_index] = time.time()
-                        #     # Terminate
-                        #     p.terminate()
-                        #     p.join()
+                if (self.next_seq_num >= self.send_window_size + self.send_base):
+    
+                    # Start bar as a process
+                    self.listenforAckHelper()
 
 
 
                 if len(data) - i < 4:
-                    self.sendPacket(data[i:len(data)])
-                    while (self.send_base != len(self.packet_array)):
+                    self.sendPacket(data[i:len(data)], False)
+                    if self.send_base != len(self.packet_array):
 
                         #check timestamps after 2 secs if listenforAck doesn't finish
-
-                        self.listenforAck()
-                        # if __name__ == '__main__':
-                        #     # Start bar as a process
-                        #     p = multiprocessing.Process(target=listenforAck)
-                        #     p.start()
-
-                        #     # Wait for 10 seconds or until process finishes
-                        #     p.join(2)
-
-                        #     # If thread is still active
-                        #     if p.is_alive():
-                        #         print "running... let's kill it..."
-                        #         self.handler()
-                        #         if self.timed_out_index != -1:
-                        #             resend_seq_num = self.timed_out_index + self.send_base
-                        #             packet_resend_data = self.packet_array[resend_seq_num].data
-                        #             self.sendPacket(packet_resent_data)
-                        #             self.timed_out_index = -1
-                        #             self.timestamps[self.timed_out_index] = time.time()
-                        #         # Terminate
-                        #         p.terminate()
-                        #         p.join()
-
+                        self.listenforAckHelper()
 
 
 
                 else:
                     #print "look for this:", data[i:i+4]
-                    self.sendPacket(data[i:i+4])
+                    self.sendPacket(data[i:i+4], False)
                     self.next_seq_num+=1
                     if (i+4 == len(data)):
-                        while (self.send_base != len(self.packet_array)):
+                        if self.send_base != len(self.packet_array):
+
+                            self.listenforAckHelper()
 
 
-                            if __name__ == '__main__':
-                                # Start bar as a process
-                                p = multiprocessing.Process(target=listenforAck)
-                                p.start()
-
-                                # Wait for 10 seconds or until process finishes
-                                p.join(2)
-
-                                # If thread is still active
-                                if p.is_alive():
-                                    p.terminate()
-
-                                    print "running... let's kill it..."
-                                    self.handler()
-                                    if self.timed_out_index != -1:
-                                        resend_seq_num = self.timed_out_index + self.send_base
-                                        packet_resend_data = self.packet_array[resend_seq_num].data
-                                        self.sendPacket(packet_resent_data)
-                                        self.timed_out_index = -1
-                                        self.timestamps[self.timed_out_index] = time.time()
-                                    # Terminate
-                                    p.join()
-
-
-    def sendPacket(self, dataChunk):
+    def sendPacket(self, dataChunk, isDup):
 
         checksum = hashlib.md5(dataChunk).hexdigest()
         checksum = int(checksum, 32)
@@ -373,12 +333,14 @@ class mySocket:
         self.packet_array.append(p)
         # print "sendpacket packet array:", p.data
         self.socket.sendto(pickle.dumps(p), self.dest_address)
-        index_time = self.next_seq_num - self.send_base
-        print "This is the index for the time:", index_time
-        print "Time array size:", len(self.timestamps)
-        self.timestamps[index_time] = time.time()
+        # print "Sent packet:", p.data
+        if not isDup:
+            index_time = self.next_seq_num - self.send_base
+            # print "This is the index for the time:", index_time
+            # print "Time array size:", len(self.timestamps)
+            self.timestamps[index_time] = time.time()
 
-    def listenforAck(self):
+    def listenforAck(self, send_base, queue):
         ack, dest_address = self.socket.recvfrom(65535)
         ack = pickle.loads(ack)
         logging.info(" Received this ACK: {0} with ACK flag: {1}".format(ack.data, ack.ACK))
@@ -397,9 +359,19 @@ class mySocket:
             #print "send-base: ", self.send_base
             #print "listening packet array:", str(self.packet_array)
             #print "packet array at send-base", self.packet_array[self.send_base]
-            while self.send_base < len(self.packet_array) and self.packet_array[self.send_base].ACK:
-                incremented = True
-                self.send_base+=1
+            # print send_base < len(self.packet_array)
+            # print self.packet_array[self.send_base].ACK
+            # print self.packet_array
+            # print "seq_num of ACK:", ack.seq_num
+            # print "send_base to compare:", send_base
+
+            while send_base < len(self.packet_array) and self.packet_array[send_base].ACK:
+                # print "send_base changing:", send_base
+                send_base+=1
+                # print "send_base changed:", send_base
+            queue.put(send_base)
+
+
 
     def verifyChecksum(self, packet):
         #print type(packet.data)
@@ -418,6 +390,8 @@ class mySocket:
 
         packet, src_address = self.socket.recvfrom(65535)
         packet = pickle.loads(packet)
+
+        # print "Received this packet:", packet.data
 
         # handling duplicates
         if self.recv_base > packet.seq_num:

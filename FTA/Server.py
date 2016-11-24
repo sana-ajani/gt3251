@@ -43,13 +43,13 @@ def listen():
             if socket.isDownload:
                 #download the file
                 split = str(socket.recv_data).split('dnld')
-                #print split
+                print split
                 name_with_end = split[1]
                 split = name_with_end.split('\x1a')
                 socket.filename = split[0]
                 filename = socket.filename
-                logging.info("Received file")
-                # print "THIS IS THE FILENAME!!", filename
+                logging.info("Received file name")
+                print "THIS IS THE FILENAME!!", filename
                 # print "LENGTH OF IT!", len(filename)
 
                 try:
@@ -61,7 +61,7 @@ def listen():
                     socket.reset()
                     socket.send(b)
                     socket.recv_data = bytearray()
-                    logging.info("Sent the requested file: ", filename, " back to the client.")
+                    logging.info("Sent the requested file: {0} back to the client.".format(filename))
 
                 except IOError:
                     logging.warning("Could not find requested file in directory")
@@ -102,7 +102,7 @@ def listen():
                 b.append(26)
                 socket.reset()
                 socket.send(b)
-                logging.info("Received and uploaded file to server:", filename)
+                logging.info("Received and uploaded file to server: {0}".format(filename))
                 socket.reset()
 
 

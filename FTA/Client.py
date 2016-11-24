@@ -60,6 +60,7 @@ def get(file):
         status = s.listenforPacket()
         if status == "Done":
             if not (s.recv_data == "File not found\x1a"):
+                s.recv_data = s.recv_data.replace("\x1a", "")
                 logging.info("This is the filename in the client: {0}".format(s.filename))
                 f = open(s.filename, 'wb')
                 f.write(s.recv_data)
