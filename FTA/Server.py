@@ -64,28 +64,24 @@ def listen():
                     b = bytearray(toSend)
                     b.append(26)
                     socket.send(b)
+                socket.reset()
 
             else:
                 #upload the file
+
                 split = str(socket.recv_data).split("upld")
-
                 filename_content_begin_end = split[1]
-
                 split = filename_content_begin_end.split(chr(2))
-
                 filename_content_end = split[1]
-
                 split = filename_content_end.split(chr(3))
-
                 content = split[1]
-
                 filename = split[0]
-
-
-
                 socket.filename = filename
+
                 print "THIS IS THE FILENAME!!", filename
                 print "LENGTH OF IT!", len(filename)
+                content = content.replace('\x1a', '')
+                print "THIS IS THE CONTENT:", content
                 try:
                     f = open(filename, 'wb')
                     f.write(content)
@@ -99,6 +95,8 @@ def listen():
                 b.append(26)
                 socket.send(b)
                 print "Server received and uploaded file:", filename
+                socket.reset()
+
 
 def window(size):
     socket.change_window(int(size))

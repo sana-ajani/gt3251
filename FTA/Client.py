@@ -53,28 +53,40 @@ def connect():
 
     synack = s.send_SYN()
 
+#download
 def get(file):
     global s
     s.get_file(file)
     while True:
-      status = s.listenforPacket()
-      if status == "Done":
-          if not (s.recv_data == "File not found\x1a"):
-            print "THIS IS FILENAME IN CLIENT", s.filename
-            f = open(s.filename, 'wb')
-            f.write(s.recv_data)
-            f.close()
-            print "FILE IS MADE!!!"
-            return None
+        status = s.listenforPacket()
+        if status == "Done":
+            if not (s.recv_data == "File not found\x1a"):
+                print "THIS IS FILENAME IN CLIENT", s.filename
+                f = open(s.filename, 'wb')
+                f.write(s.recv_data)
+                f.close()
+                print "FILE IS MADE!!!"
+                s.reset()
+                return None
+            else:
+                print "File not found:", s.filename
+                s.reset()
+                return None
 
+#upload
 def post(file):
     global s
-    imageFile = open(file, "rb")
-    s.post_file(imageFile, file)
+    try:
+        imageFile = open(file, "rb")
+        s.post_file(imageFile, file)
+    except IOError:
+        print "File to upload is not found:", file
+        return None
     while True:
       status = s.listenforPacket()
       if status == "Done":
         print s.recv_data
+        s.reset()
         return None
 
 
@@ -87,6 +99,7 @@ def invalid_input():
     print('--> Unknown command, please enter connect, get <download filename>, post <upload filename> or window <desired window size>')
 
 def main():
+    global s
     cmd_actions = {'connect': connect, 'get': get, 'post': post, 'window': window}
 
     while 1:
@@ -94,6 +107,7 @@ def main():
         cmd = raw_input('Input command> ')
 
         if cmd == 'disconnect':
+            s.send_FIN()
 
             #gracefully disconnect
             break
