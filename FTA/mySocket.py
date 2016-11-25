@@ -8,8 +8,6 @@ from Packet import Packet
 import random
 import pickle
 import time
-# import signal
-
 import multiprocessing
 
 #create socket objects and bind to ports, send and receive data, and create connections.
@@ -59,7 +57,6 @@ class mySocket:
     def bind_server_socket(self):
         try:
             self.socket.bind(self.src_address)
-            #logging.info(self.src_address)
         except socket.error, msg:
             logging.error(' Bind failed. Error Code: ' + str(msg[0]) + ' Message: ' + msg[1])
             sys.exit()
@@ -67,7 +64,7 @@ class mySocket:
     def create_packet(self, src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum = None):  #delete offset
         return Packet(src_portNum, dest_portNum, seq_num, ack_num, flags, data, checksum)
 
-    #create and send SYN packet with no data and SYN flag on,
+    #create and send SYN packet with no data and SYN flag on
     def send_SYN(self):
         syn_pkt = self.create_packet(self.src_address[1], self.dest_address[1], random.randrange(0, 10), self.ack_num, [False, False, False, True, False], 0)
         self.socket.sendto(pickle.dumps(syn_pkt), self.dest_address)
@@ -289,17 +286,12 @@ class mySocket:
 
         checksum = hashlib.md5(dataChunk).hexdigest()
         checksum = int(checksum, 32)
-        #print checksum
-        # print "dataChunk: ", dataChunk
         p = self.create_packet(self.src_address[1], self.dest_address[1], self.next_seq_num, self.ack_num, [False, False, False, False, False], dataChunk, checksum)
         self.packet_array.append(p)
-        # print "sendpacket packet array:", p.data
         self.socket.sendto(pickle.dumps(p), self.dest_address)
-        # print "Sent packet:", p.data
         if not isDup:
             index_time = self.next_seq_num - self.send_base
-            # print "This is the index for the time:", index_time
-            # print "Time array size:", len(self.timestamps)
+
             self.timestamps[index_time] = time.time()
 
     def listenforFin(self):

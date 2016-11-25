@@ -83,7 +83,7 @@ def listen():
                     logging.warning(" Could not upload file to server")
                 socket.recv_data = bytearray()
 
-                done_upload = "Done upload"
+                done_upload = "Upload finished"
                 b = bytearray(done_upload)
                 b.append(26)
                 socket.reset()
@@ -126,6 +126,9 @@ def main():
         if (len(command_info) > 1):
             action(para)
         else:
+            if (method == "window"):
+                logging.warning(" Please input a window size")
+                return None
             action()
 
 main()

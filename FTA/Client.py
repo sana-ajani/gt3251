@@ -49,15 +49,15 @@ def get(file):
         if status == "Done":
             if not (s.recv_data == "File not found\x1a"):
                 s.recv_data = s.recv_data.replace("\x1a", "")
-                logging.info("This is the filename in the client: {0}".format(s.filename))
+                logging.info(" This is the filename in the client: {0}".format(s.filename))
                 f = open(s.filename, 'wb')
                 f.write(s.recv_data)
                 f.close()
-                logging.info("Client has downloaded and created file")
+                logging.info(" Client has downloaded and created file!")
                 s.reset()
                 return None
             else:
-                logging.warning("File not found: ", s.filename)
+                logging.warning(" File not found: ")
                 s.reset()
                 return None
 
@@ -68,7 +68,7 @@ def post(file):
         imageFile = open(file, "rb")
         s.post_file(imageFile, file)
     except IOError:
-        logging.warning("File to upload is not found: ", file)
+        logging.warning("File to upload is not found.")
         return None
     while True:
       status = s.listenforPacket()
@@ -77,9 +77,7 @@ def post(file):
         s.reset()
         return None
 
-
 def window(size):
-
     s.change_window(int(size))
     logging.info(" Window changed")
 
@@ -91,7 +89,8 @@ def main():
     cmd_actions = {'connect': connect, 'get': get, 'post': post, 'window': window}
 
     while 1:
-        raw_input("Press enter to enter new command")   # After pressing Enter you'll be in "input mode"
+        raw_input("Press enter to enter new command")
+        # After pressing Enter you'll be in "input mode"
         cmd = raw_input('Input command> ')
 
         if cmd == 'disconnect':
@@ -103,11 +102,19 @@ def main():
         method = command_info[0]
         if (len(command_info) > 1):
             para = command_info[1]
-
         action = cmd_actions.get(method, invalid_input)
         if (len(command_info) > 1):
             action(para)
         else:
+            if (method == "window"):
+                logging.warning(" Please input a window size")
+                return None
+            if (method == "post"):
+                logging.warning(" Please give the name of the file to upload")
+                return None
+            if (method == "get"):
+                logging.warning(" Please give the name of the file to download")
+                return None
             action()
 
 main()
